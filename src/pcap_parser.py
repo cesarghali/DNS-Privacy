@@ -1,6 +1,7 @@
 import sys
 import traceback
 import dpkt
+import ipaddress
 # from scapy.all import *
 from scapy.layers.dns import DNSRR, DNS, DNSQR
 
@@ -34,6 +35,9 @@ def parseWithDPKT(filename):
             print self.dns.an
             print "RR #1 name: ", self.dns.an[0].name
             print "RR #1 r(ecord) data: ", self.dns.an[0].rdata
+            address = ipaddress.IPv4Addres(self.dns.an[0].rdata)
+            print address
+            return
 
           # print self.dns.data
           # print self.dns.id
