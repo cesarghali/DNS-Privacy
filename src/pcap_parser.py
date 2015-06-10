@@ -1,6 +1,7 @@
 import sys
+import traceback
 import dpkt
-from scapy.all import *
+# from scapy.all import *
 from scapy.layers.dns import DNSRR, DNS, DNSQR
 
 filename = sys.argv[1]
@@ -23,21 +24,37 @@ def parseWithDPKT(filename):
       if self.ip.p == dpkt.ip.IP_PROTO_UDP: # DNS runs over UDP
         self.udp = self.ip.data
 
+        tb = None
         try:
           self.dns = dpkt.dns.DNS(self.udp.data)
           print "DNS query details: "
-          print self.dns.qr
-          print self.dns.opcode
-          print self.dns.aa
-          print self.dns.rd # recurse desired (?)
-          print self.dns.ra
-          print self.dns.zero
-          print self.dns.rcode
+          print self.dns.qd
+          print "number of RRs", len(self.dns.an)
+          if len(self.dns.an) > 0: # each element in an is a RR answer
+            print self.dns.an
+            print "RR #1 name: ", self.dns.an[0].name
+            print "RR #1 r(ecord) data: ", self.dns.an[0].rdata
+
+          # print self.dns.data
+          # print self.dns.id
+          # print self.dns.op
+          # print self.dns.ns # name servers
+          # print self.dns.qr # query response, 1 bit
+          # print self.dns.opcode # 4 bits
+          # print self.dns.aa # authoritative answer, 1 bit
+          # print self.dns.rd # recurse desired, 1 bit
+          # print self.dns.ra # recursion available, 1 bit
+          # print self.dns.zero # 1 bit
+          # print self.dns.rcode # return code, 4 bits
           return True
         except Exception as e:
           isDns = False
+          tb = traceback.format_exc()
           if debug:
             print >> sys.stderr, str(e)
+        finally:
+          if tb != None and debug:
+            print tb
       else:
         return True
 
@@ -73,5 +90,5 @@ def parseWithScapy(filename):
 
 #     print name
 
-# Run the 2nd parser...
-parseWithScapy(filename)
+# Run the 1st parser...
+parseWithDPKT(filename)
