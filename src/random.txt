@@ -1,0 +1,13 @@
+DNS fields
+
+# print self.dns.data
+# print self.dns.id
+# print self.dns.op
+# print self.dns.ns # name servers
+# print self.dns.qr # query response, 1 bit
+# print self.dns.opcode # 4 bits
+# print self.dns.aa # authoritative answer, 1 bit
+# print self.dns.rd # recurse desired, 1 bit
+# print self.dns.ra # recursion available, 1 bit
+# print self.dns.zero # 1 bit
+# print self.dns.rcode # return code, 4 bits

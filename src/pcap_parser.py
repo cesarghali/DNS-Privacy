@@ -2,12 +2,24 @@ import sys
 import traceback
 import dpkt
 import ipaddress
-# from scapy.all import *
-from scapy.layers.dns import DNSRR, DNS, DNSQR
+import socket
 
-filename = sys.argv[1]
+class ResourceRecord(object):
+  def __init__(self, ip, rr):
+    self.ip = ip
+    self.rr = rr
+    self.sourceAddress = socket.inet_ntoa(ip.src)
+    self.dstAddress = socket.inet_ntoa(ip.dst)
+    self.rrTargetAddress = ipaddress.IPv4Address(self.dns.an[0].rdata)
 
-def parseWithDPKT(filename):
+class Query(object):
+  def __init__(self, ip, query):
+    self.ip = ip
+    self.sourceAddress = socket.inet_ntoa(ip.src)
+    self.dstAddress = socket.inet_ntoa(ip.dst)
+    self.query = query
+
+def parse(filename):
   pcapFile = dpkt.pcap.Reader(open(filename,'r'))
 
   class Packet(object):
@@ -19,8 +31,6 @@ def parseWithDPKT(filename):
       if self.ethernetPacket.type != dpkt.ethernet.ETH_TYPE_IP:
         return False # DNS runs on top of IP
 
-      # print self.dns
-
       self.ip = self.ethernetPacket.data
       if self.ip.p == dpkt.ip.IP_PROTO_UDP: # DNS runs over UDP
         self.udp = self.ip.data
@@ -28,28 +38,13 @@ def parseWithDPKT(filename):
         tb = None
         try:
           self.dns = dpkt.dns.DNS(self.udp.data)
-          print "DNS query details: "
-          print self.dns.qd
-          print "number of RRs", len(self.dns.an)
-          if len(self.dns.an) > 0: # each element in an is a RR answer
-            print self.dns.an
-            print "RR #1 name: ", self.dns.an[0].name
-            print "RR #1 r(ecord) data: ", self.dns.an[0].rdata
-            address = ipaddress.IPv4Addres(self.dns.an[0].rdata)
-            print address
-            return
 
-          # print self.dns.data
-          # print self.dns.id
-          # print self.dns.op
-          # print self.dns.ns # name servers
-          # print self.dns.qr # query response, 1 bit
-          # print self.dns.opcode # 4 bits
-          # print self.dns.aa # authoritative answer, 1 bit
-          # print self.dns.rd # recurse desired, 1 bit
-          # print self.dns.ra # recursion available, 1 bit
-          # print self.dns.zero # 1 bit
-          # print self.dns.rcode # return code, 4 bits
+          if len(self.dns.an) == 0:
+            self.query = Query(self.ip, self.dns.qd)
+
+          self.records = []
+          for rr in self.dns.an:
+            self.records.append(ResourceRecord(self.ip, rr))
           return True
         except Exception as e:
           isDns = False
@@ -62,37 +57,21 @@ def parseWithDPKT(filename):
       else:
         return True
 
-  queries = []
+  dnsPackets = []
   for ts, pkt in pcapFile:
     eth = dpkt.ethernet.Ethernet(pkt) 
     packet = Packet(eth)
     if packet.isDNS:
-      queries.append(packet)
+      dnsPackets.append(packet)
 
-  print "Total queries: ", len(queries)
+  return dnsPackets
 
-def parseWithScapy(filename):
-  pkts = rdpcap(filename)
-
-  for p in pkts:
-    pkt_time = pkt.sprintf('%sent.time%')
-    try:
-      if DNSQR in pkt and pkt.dport == 53:
-         print '[**] Detected DNS QR Message at: ', pkt_time
-      elif DNSRR in pkt and pkt.sport == 53:
-         print '[**] Detected DNS RR Message at: ', pkt_time
-    except:
-      pass
-
-# if p.haslayer(DNS):   
-#     if p.qdcount > 0 and isinstance(p.qd, DNSQR):
-#         name = p.qd.qname
-#     elif p.ancount > 0 and isinstance(p.an, DNSRR):
-#         name = p.an.rdata
-#     else:
-#         continue
-
-#     print name
-
-# Run the 1st parser...
-parseWithDPKT(filename)
+if __name__ == "__main__":
+  if (len(sys.argv) != 2):
+    print >> sys.stderr, "usage: python pcap_parser.py <pcap file>"
+    sys.exit(-1)
+    
+  filename = sys.argv[1]
+  print >> sys.stderr, "Parsing...", filename
+  dnsPackets = parse(filename)
+  print >> sys.stderr, "Done. Parsed %d DNS packets" % len(dnsPackets)
