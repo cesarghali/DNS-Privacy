@@ -26,9 +26,8 @@ class FeatureFormatter(object):
     self.features = features # list of tuples
 
   def toCSV(self, stream):
-    writer = csv.writer(stream)
     for f in self.features:
-      writer.writerow(f)
+      stream.write(",".join(map(lambda x : str(x), f)) + "\n")
 
 class FeatureExtractor(object):
   def __init__(self, queries):
