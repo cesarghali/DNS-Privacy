@@ -1,5 +1,4 @@
 import sys
-import csv
 import math
 from random import shuffle
 from sklearn.linear_model import SGDClassifier
