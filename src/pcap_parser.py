@@ -3,7 +3,6 @@ import traceback
 import dpkt
 import ipaddress
 import socket
-import csv
 
 class ResourceRecord(object):
   def __init__(self, ip, rr):
@@ -69,19 +68,3 @@ class Packet(object):
           print tb
     else:
       return False
-
-if __name__ == "__main__":
-  if (len(sys.argv) != 2):
-    print >> sys.stderr, "usage: python pcap_parser.py <pcap file>"
-    sys.exit(-1)
-    
-  filename = sys.argv[1]
-  print >> sys.stderr, "Parsing...", filename
-  
-  dnsPackets = parse(filename)
-  extractor = QueryLengthFeatureExtractor(dnsPackets)
-  features = extractor.extract()
-  formatter = FeatureFormatter(features)
-  print formatter.toCSV(sys.stdout)
-
-  print >> sys.stderr, "Done. Parsed %d DNS packets" % len(dnsPackets)

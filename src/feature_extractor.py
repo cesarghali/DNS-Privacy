@@ -39,3 +39,19 @@ class QueryLengthFeatureExtractor(FeatureExtractor):
 
       features.append(feature)
     return features
+
+if __name__ == "__main__":
+  if (len(sys.argv) != 2):
+    print >> sys.stderr, "usage: python feature_extractor.py <pcap file>"
+    sys.exit(-1)
+    
+  filename = sys.argv[1]
+  print >> sys.stderr, "Parsing...", filename
+  
+  dnsPackets = parse(filename)
+  extractor = QueryLengthFeatureExtractor(dnsPackets)
+  features = extractor.extract()
+  formatter = FeatureFormatter(features)
+  print formatter.toCSV(sys.stdout)
+
+  print >> sys.stderr, "Done. Parsed %d DNS packets" % len(dnsPackets)
