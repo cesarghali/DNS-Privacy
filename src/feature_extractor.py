@@ -7,8 +7,9 @@ from pcap_parser import *
 # DONE 4. Query resolution length (time)
 # 5. Reverse DNS entry IP address ranges
 # 6. Query source-target association (e.g., client/stub-recursive association)
-# 7. Query source identity (address)
-# 8. Query target identity (address)
+# REMOVED -- not needed 7. Query source identity (address)
+# DONE 8. Query target address 
+# ADDED: Query target name (different from above since a name could map to different addresses)
 # 9. Query diversity (character differences, URI component differences, etc.)
 # 10. Resolution chain length (number of recursive queries)
 # 11. Resolution chain (domains in the chain itself)
@@ -32,6 +33,61 @@ class FeatureExtractor(object):
 
     def extract(self):
         pass
+
+class TestFeatureExtractor(FeatureExtractor):
+    def __init__(self, queries):
+        FeatureExtractor.__init__(self, queries)
+
+    def extract(self):
+        features = []
+        sources = {}
+
+        for packet in self.queries:
+            pass
+
+        return features
+
+class TargetAddressFeatureExtractor(FeatureExtractor):
+    def __init__(self, queries):
+        FeatureExtractor.__init__(self, queries)
+
+    def extract(self):
+        features = []
+        sources = {}
+
+        for packet in self.queries:
+            for record in packet.records:
+                src = record.srcAddress
+                if record.targetAddress != None:
+                    target = record.targetAddress
+
+                    if src not in sources:
+                        sources[src] = len(sources)
+                    feature = (sources[src], target)
+
+                    features.append(feature)
+
+        return features
+
+class TargetNameFeatureExtractor(FeatureExtractor):
+    def __init__(self, queries):
+        FeatureExtractor.__init__(self, queries)
+
+    def extract(self):
+        features = []
+        sources = {}
+
+        for packet in self.queries:
+            if packet.query != None:
+                src = packet.query.srcAddress
+                target = packet.query.name
+                if src not in sources:
+                    sources[src] = len(sources)
+                feature = (sources[src], target)
+
+                features.append(feature)
+
+        return features
 
 class QueryResolutionTimeFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):

@@ -14,6 +14,7 @@ class ResourceRecord(object):
         
     def _unpack(self):
         self.target = self.rr.name
+        self.type = self.rr.type
 
         # Parse the RR type (see https://en.wikipedia.org/wiki/List_of_DNS_record_types)
         if self.rr.type == 5:
