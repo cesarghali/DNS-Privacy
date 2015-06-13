@@ -39,18 +39,24 @@ class QueryResolutionTimeFeatureExtractor(FeatureExtractor):
 
     def extract(self):
         features = []
-        sources = []
+        sources = {}
 
         for packet in self.queries:
+
+            # Match queries to responses, so only start searching from queries
             if packet.query != None:
                 src = packet.query.srcAddress
-                print packet.records, packet.index
+                target = packet.query.name
                 for response in self.queries:
-                    # dst = response.query.dstAddress, response.query.srcAddress
-                    # print src, dst
-                    if len(response.records) > 0:
+                    if len(response.records) > 0 and response.records[0].target == target:
                         match = response.records[0]
-                        # print packet.ts
+                        delta = response.ts - packet.ts
+
+                        if src not in sources:
+                            sources[src] = len(sources) 
+                        feature = (sources[src], delta)
+
+                        features.append(feature)
 
         return features
 
@@ -60,7 +66,7 @@ class QueryFrequencyFeatureExtractor(FeatureExtractor):
 
     def extract(self):
         features = []
-        sources = []
+        sources = {}
 
         # Q: feature is a user ID and then his relative frequency? How do we determine the frequency?
         for packet in self.queries:
@@ -78,12 +84,14 @@ class QueryLengthFeatureExtractor(FeatureExtractor):
 
         for packet in self.queries:
             src = None
+
+            queryLength = -1
             if packet.query != None:
                 src = packet.query.srcAddress
+                queryLength = len(packet.query.name)
             if len(packet.records) > 0:
-                src = packet.query.dstAddress
-
-            queryLength = len(packet.query.name)
+                src = packet.records[0].dstAddress
+                queryLength = len(packet.records[0].target)
 
             if src not in sources:
                 sources[src] = len(sources) 

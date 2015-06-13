@@ -10,15 +10,36 @@ class ResourceRecord(object):
         self.rr = rr
         self.srcAddress = socket.inet_ntoa(ip.src)
         self.dstAddress = socket.inet_ntoa(ip.dst)
-        self.rrTargetAddress = ipaddress.IPv4Address(rr.rdata)
+        self._unpack()
+        
+    def _unpack(self):
+        self.target = self.rr.name
+
+        # Parse the RR type (see https://en.wikipedia.org/wiki/List_of_DNS_record_types)
+        if self.rr.type == 5:
+            # print "CNAME request", rr.name, "\tresponse", rr.cname
+            self.cname = self.rr.cname
+        elif self.rr.type == 1:
+            # print "Type 1 Request", rr.name, "\tresponse", socket.inet_ntoa(rr.rdata)
+            self.targetAddress = socket.inet_ntoa(self.rr.rdata)
+        elif self.rr.type == 12:
+            # print "PTR request", rr.name, "\tresponse", rr.ptrname
+            self.ptrname = self.rr.ptrname
 
 class Query(object):
-    def __init__(self, ip, query):
+    def __init__(self, ip, dns, query):
         self.ip = ip
+        self.query = query
+        self.dns = dns
         self.srcAddress = socket.inet_ntoa(ip.src)
         self.dstAddress = socket.inet_ntoa(ip.dst)
-        self.query = query
-        self.name = query.name
+        self._unpack()
+
+    def _unpack(self):
+        self.name = self.query.name
+        self.id = self.dns.id
+        self.qr = self.dns.qr
+        self.type = self.query.type
 
 def parse(filename):
     pcapFile = dpkt.pcap.Reader(open(filename,'r'))
@@ -55,11 +76,13 @@ class Packet(object):
             try:
                 self.dns = dpkt.dns.DNS(self.udp.data)
 
-                if len(self.dns.an) == 0:
-                    self.query = Query(self.ip, self.dns.qd[0])
-
-                for rr in self.dns.an:
-                    self.records.append(ResourceRecord(self.ip, rr))
+                # QR = 0, query
+                # QR = 1, response
+                if self.dns.qr == 0:
+                    self.query = Query(self.ip, self.dns, self.dns.qd[0])
+                else:
+                    for rr in self.dns.an:
+                        self.records.append(ResourceRecord(self.ip, rr))
                 return True 
             except Exception as e:
                 isDns = False
