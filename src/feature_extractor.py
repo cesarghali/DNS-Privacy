@@ -2,7 +2,7 @@ import sys
 from pcap_parser import *
 
 # DONE 1. Relative (per-user) query length
-# 2. Relative source query frequency 
+# 2. Relative source query frequency
 # 3. Relative target query frequency 
 # 4. Query resolution length (time)
 # 5. Reverse DNS entry IP address ranges
@@ -33,14 +33,40 @@ class FeatureExtractor(object):
     def extract(self):
         pass
 
+class QueryResolutionTimeFeatureExtractor(FeatureExtractor):
+    def __init__(self, queries):
+        FeatureExtractor.__init__(self, queries)
+
+    def extract(self):
+        features = []
+        sources = []
+
+        for packet in self.queries:
+            if packet.query != None:
+                src = packet.query.srcAddress
+                print packet.records, packet.index
+                for response in self.queries:
+                    # dst = response.query.dstAddress, response.query.srcAddress
+                    # print src, dst
+                    if len(response.records) > 0:
+                        match = response.records[0]
+                        # print packet.ts
+
+        return features
+
 class QueryFrequencyFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):
         FeatureExtractor.__init__(self, queries)
 
     def extract(self):
-		features = []
+        features = []
         sources = []
-		# TODO 
+
+        # Q: feature is a user ID and then his relative frequency? How do we determine the frequency?
+        for packet in self.queries:
+            pass 
+
+        return features
   
 class QueryLengthFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):
@@ -75,7 +101,8 @@ if __name__ == "__main__":
     print >> sys.stderr, "Parsing...", filename
     
     dnsPackets = parse(filename)
-    extractor = QueryLengthFeatureExtractor(dnsPackets)
+    # extractor = QueryLengthFeatureExtractor(dnsPackets)
+    extractor = QueryResolutionTimeFeatureExtractor(dnsPackets)
     features = extractor.extract()
     formatter = FeatureFormatter(features)
     print formatter.toCSV(sys.stdout)

@@ -10,7 +10,7 @@ class ResourceRecord(object):
         self.rr = rr
         self.srcAddress = socket.inet_ntoa(ip.src)
         self.dstAddress = socket.inet_ntoa(ip.dst)
-        self.rrTargetAddress = ipaddress.IPv4Address(self.dns.an[0].rdata)
+        self.rrTargetAddress = ipaddress.IPv4Address(rr.rdata)
 
 class Query(object):
     def __init__(self, ip, query):
@@ -24,19 +24,23 @@ def parse(filename):
     pcapFile = dpkt.pcap.Reader(open(filename,'r'))
 
     dnsPackets = []
+    index = 0
     for ts, pkt in pcapFile:
         eth = dpkt.ethernet.Ethernet(pkt) 
-        packet = Packet(eth)
+        packet = Packet(index, eth, ts)
         if packet.isDNS:
             dnsPackets.append(packet)
+        index = index + 1
 
     return dnsPackets
 
 class Packet(object):
-    def __init__(self, ethernetPacket):
+    def __init__(self, index, ethernetPacket, ts):
         self.ethernetPacket = ethernetPacket
         self.query = None
         self.records = []
+        self.ts = ts
+        self.index = index
         self.isDNS = self.unpack()
 
     def unpack(self, debug = False):
@@ -54,10 +58,9 @@ class Packet(object):
                 if len(self.dns.an) == 0:
                     self.query = Query(self.ip, self.dns.qd[0])
 
-                self.records = []
                 for rr in self.dns.an:
                     self.records.append(ResourceRecord(self.ip, rr))
-                return True
+                return True 
             except Exception as e:
                 isDns = False
                 tb = traceback.format_exc()
