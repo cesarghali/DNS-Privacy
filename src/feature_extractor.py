@@ -47,6 +47,48 @@ class TestFeatureExtractor(FeatureExtractor):
 
         return features
 
+class QueryFrequencyFeatureExtractor(FeatureExtractor):
+    def __init__(self, queries):
+        FeatureExtractor.__init__(self, queries)
+
+    def extract(self, params = {"window" : 0.05}):
+        features = []
+        sources = {}
+
+        window = params["window"]
+
+        i = 0
+        while i < len(self.queries):
+            packet = self.queries[i]
+            j = i + 1
+            if packet.query != None:
+                src = packet.query.srcAddress
+                numberOfQueries = 1 
+                atEnd = False
+                start = packet.ts
+                end = 0
+                j = i + 1
+                while j < len(self.queries):
+                    nextPacket = self.queries[j]
+                    if nextPacket.query != None and nextPacket.query.srcAddress == src:
+                        end = nextPacket.ts
+                        if end - start > window:
+                            atEnd = True
+                            offset = j
+                            break
+                        else:
+                            numberOfQueries += 1
+                    j += 1
+
+                frequency = float(numberOfQueries) / float(window)              
+
+                if src not in sources:
+                    sources[src] = len(sources)
+                feature = (sources[src], frequency)
+                features.append(feature)
+            i = j
+        return features
+
 class TargetAddressFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):
         FeatureExtractor.__init__(self, queries)
@@ -115,20 +157,6 @@ class QueryResolutionTimeFeatureExtractor(FeatureExtractor):
                             features.append(feature)
 
         return features
-
-class QueryFrequencyFeatureExtractor(FeatureExtractor):
-    def __init__(self, queries):
-        FeatureExtractor.__init__(self, queries)
-
-    def extract(self):
-        features = []
-        sources = {}
-
-        # Q: feature is a user ID and then his relative frequency? How do we determine the frequency?
-        for packet in self.queries:
-            pass 
-
-        return features
   
 class QueryLengthFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):
@@ -165,8 +193,13 @@ if __name__ == "__main__":
     print >> sys.stderr, "Parsing...", filename
     
     dnsPackets = parse(filename)
-    # extractor = QueryLengthFeatureExtractor(dnsPackets)
-    extractor = QueryResolutionTimeFeatureExtractor(dnsPackets)
+
+    # Instantiate an extractor
+    extractor = QueryLengthFeatureExtractor(dnsPackets)
+    extractor = QueryResolutionTimeFeatureExtractor(dnsPackets) 
+    extractor = QueryFrequencyFeatureExtractor(dnsPackets)
+
+    # Get the features
     features = extractor.extract()
     formatter = FeatureFormatter(features)
     print formatter.toCSV(sys.stdout)
