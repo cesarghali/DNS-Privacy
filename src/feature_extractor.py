@@ -1,20 +1,23 @@
 import sys
 from pcap_parser import *
 
+#### DONE
 # DONE 1. Relative (per-user) query length
 # DONE 2. Relative source query frequency
 # DONE 3. Relative target query frequency 
 # DONE 4. Query resolution length (time)
-# 5. Reverse DNS entry IP address ranges
-# 6. Query source-target association (e.g., client/stub-recursive association)
 # REMOVED -- not needed 7. Query source identity (address)
 # DONE 8. Query target address 
 # ADDED: Query target name (different from above since a name could map to different addresses)
+
+#### TODO
+# 5. Reverse DNS entry IP address ranges
+# 6. Query source-target association (e.g., client/stub-recursive association)
 # 9. Query diversity (character differences, URI component differences, etc.)
 # 10. Resolution chain length (number of recursive queries)
 # 11. Resolution chain (domains in the chain itself)
 
-# sophisticated:
+#### More sophisticated
 # 12. Monitoring reply from cache (Adv controls in/out links of R and can know if something is served from cache even if the source of the query is anonymised)
 
 class FeatureFormatter(object):
