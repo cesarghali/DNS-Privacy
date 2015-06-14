@@ -107,12 +107,12 @@ class QueryResolutionTimeFeatureExtractor(FeatureExtractor):
                     if len(response.records) > 0 and response.records[0].target == target:
                         match = response.records[0]
                         delta = response.ts - packet.ts
+                        if delta > 0:
+                            if src not in sources:
+                                sources[src] = len(sources) 
+                            feature = (sources[src], delta)
 
-                        if src not in sources:
-                            sources[src] = len(sources) 
-                        feature = (sources[src], delta)
-
-                        features.append(feature)
+                            features.append(feature)
 
         return features
 
