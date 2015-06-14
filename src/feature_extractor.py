@@ -3,7 +3,7 @@ from pcap_parser import *
 
 # DONE 1. Relative (per-user) query length
 # DONE 2. Relative source query frequency
-# IN PROGRESS 3. Relative target query frequency 
+# DONE 3. Relative target query frequency 
 # DONE 4. Query resolution length (time)
 # 5. Reverse DNS entry IP address ranges
 # 6. Query source-target association (e.g., client/stub-recursive association)
