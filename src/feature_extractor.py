@@ -2,8 +2,8 @@ import sys
 from pcap_parser import *
 
 # DONE 1. Relative (per-user) query length
-# 2. Relative source query frequency
-# 3. Relative target query frequency 
+# DONE 2. Relative source query frequency
+# IN PROGRESS 3. Relative target query frequency 
 # DONE 4. Query resolution length (time)
 # 5. Reverse DNS entry IP address ranges
 # 6. Query source-target association (e.g., client/stub-recursive association)
@@ -13,6 +13,8 @@ from pcap_parser import *
 # 9. Query diversity (character differences, URI component differences, etc.)
 # 10. Resolution chain length (number of recursive queries)
 # 11. Resolution chain (domains in the chain itself)
+
+# sophisticated:
 # 12. Monitoring reply from cache (Adv controls in/out links of R and can know if something is served from cache even if the source of the query is anonymised)
 
 class FeatureFormatter(object):
@@ -35,6 +37,8 @@ class FeatureExtractor(object):
         pass
 
 class TestFeatureExtractor(FeatureExtractor):
+    ''' Template for new feature extractors
+    '''
     def __init__(self, queries):
         FeatureExtractor.__init__(self, queries)
 
@@ -45,7 +49,58 @@ class TestFeatureExtractor(FeatureExtractor):
         for packet in self.queries:
             pass
 
-        return features
+        return features, sources
+
+class TargetQueryFrequencyFeatureExtractor(FeatureExtractor):
+    def __init__(self, queries):
+        FeatureExtractor.__init__(self, queries)
+
+    def extract(self, params = {"window" : 0.05}):
+        sources = {}
+        features = []
+
+        window = params["window"]
+
+        i = 0
+        while i < len(self.queries):
+            packet = self.queries[i]
+            offset = i + 1
+
+            if packet.query != None:
+                src = packet.query.srcAddress
+                targetName = packet.query.name
+                numberOfQueries = 1 
+                start = packet.ts
+                end = 0
+                j = offset
+                while j < len(self.queries):
+                    nextPacket = self.queries[j]
+
+                    # if the next packet was a query and issued by the same IP
+                    if nextPacket.query != None and nextPacket.query.srcAddress == src:
+
+                        # Check to see if it was issued for a different target, and if so, we start from here next time
+                        if nextPacket.query.name != targetName and offset != (i + 1): 
+                            offset = j # set the next query from which to start
+
+                        # else, add it to the list if the name matches the original target name
+                        end = nextPacket.ts
+                        if end - start > window:
+                            break
+                        elif nextPacket.query.name == targetName:
+                            numberOfQueries += 1
+                    j += 1
+
+                frequency = float(numberOfQueries) / float(window)
+
+                if src not in sources:
+                    sources[src] = len(sources)
+                feature = (sources[src], frequency)
+                features.append(feature)
+
+            i = offset
+
+        return features, sources
 
 class QueryFrequencyFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):
@@ -60,24 +115,28 @@ class QueryFrequencyFeatureExtractor(FeatureExtractor):
         i = 0
         while i < len(self.queries):
             packet = self.queries[i]
-            j = i + 1
+            offset = i + 1
             if packet.query != None:
                 src = packet.query.srcAddress
                 numberOfQueries = 1 
-                atEnd = False
                 start = packet.ts
                 end = 0
-                j = i + 1
+                j = offset
                 while j < len(self.queries):
                     nextPacket = self.queries[j]
-                    if nextPacket.query != None and nextPacket.query.srcAddress == src:
-                        end = nextPacket.ts
-                        if end - start > window:
-                            atEnd = True
+                    if nextPacket.query != None:
+
+                        # this next packet is the start of a new window, so record this offset
+                        if nextPacket.query.srcAddress != src and offset != (i + 1):
                             offset = j
-                            break
-                        else:
-                            numberOfQueries += 1
+
+                        # check to see if the src address is the same, and if so, it contributes
+                        elif nextPacket.query.srcAddress == src:
+                            end = nextPacket.ts
+                            if end - start > window:
+                                break
+                            else:
+                                numberOfQueries += 1
                     j += 1
 
                 frequency = float(numberOfQueries) / float(window)              
@@ -86,8 +145,8 @@ class QueryFrequencyFeatureExtractor(FeatureExtractor):
                     sources[src] = len(sources)
                 feature = (sources[src], frequency)
                 features.append(feature)
-            i = j
-        return features
+            i = offset
+        return features, sources
 
 class TargetAddressFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):
@@ -109,7 +168,7 @@ class TargetAddressFeatureExtractor(FeatureExtractor):
 
                     features.append(feature)
 
-        return features
+        return features, sources
 
 class TargetNameFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):
@@ -129,7 +188,7 @@ class TargetNameFeatureExtractor(FeatureExtractor):
 
                 features.append(feature)
 
-        return features
+        return features, sources
 
 class QueryResolutionTimeFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):
@@ -156,7 +215,7 @@ class QueryResolutionTimeFeatureExtractor(FeatureExtractor):
 
                             features.append(feature)
 
-        return features
+        return features, sources
   
 class QueryLengthFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):
@@ -182,7 +241,8 @@ class QueryLengthFeatureExtractor(FeatureExtractor):
             feature = (sources[src], queryLength)
 
             features.append(feature)
-        return features
+        print sources
+        return features, sources
 
 if __name__ == "__main__":
     if (len(sys.argv) != 2):
@@ -195,12 +255,15 @@ if __name__ == "__main__":
     dnsPackets = parse(filename)
 
     # Instantiate an extractor
-    extractor = QueryLengthFeatureExtractor(dnsPackets)
-    extractor = QueryResolutionTimeFeatureExtractor(dnsPackets) 
-    extractor = QueryFrequencyFeatureExtractor(dnsPackets)
+    # extractor = QueryLengthFeatureExtractor(dnsPackets)
+    # extractor = QueryResolutionTimeFeatureExtractor(dnsPackets) 
+    # extractor = QueryFrequencyFeatureExtractor(dnsPackets)
+    extractor = TargetQueryFrequencyFeatureExtractor(dnsPackets)
 
     # Get the features
-    features = extractor.extract()
+    features, sources = extractor.extract()
+    print >> sys.stderr, "IP address sources:", sources
+
     formatter = FeatureFormatter(features)
     print formatter.toCSV(sys.stdout)
 
