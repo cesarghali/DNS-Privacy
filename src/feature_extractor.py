@@ -54,6 +54,60 @@ class TestFeatureExtractor(FeatureExtractor):
 
         return features, sources
 
+class QueryDiversityFeatureExtractor(FeatureExtractor):
+    ''' Template for new feature extractors
+    '''
+    def __init__(self, queries):
+        FeatureExtractor.__init__(self, queries)
+
+    def extract(self, prams = {"window" : 0.05}):
+        features = []
+        sources = {}
+
+        window = params["window"]
+
+        i = 0
+        while i < len(self.queries):
+            packet = self.queries[i]
+            offset = i + 1
+
+            if packet.query != None:
+                src = packet.query.srcAddress
+                targetName = packet.query.name
+                queriesSent = []
+                start = packet.ts
+                end = 0
+                j = offset
+                while j < len(self.queries):
+                    nextPacket = self.queries[j]
+
+                    # if the next packet was a query and issued by the same IP
+                    if nextPacket.query != None and nextPacket.query.srcAddress == src:
+
+                        # Check to see if it was issued for a different target, and if so, we start from here next time
+                        if nextPacket.query.srcAddress == src:
+                            queriesSent.append(nextPacket.query)
+
+                        # else, add it to the list if the name matches the original target name
+                        end = nextPacket.ts
+                        if end - start > window:
+                            break
+                            
+                    j += 1
+                offset = j
+
+                # TODO: compute the ``diversity'' of the queries sent in this time window
+                diversity = 0
+
+                if src not in sources:
+                    sources[src] = len(sources)
+                feature = (sources[src], diversity)
+                features.append(feature)
+
+            i = offset
+
+        return features, sources
+
 class TargetQueryFrequencyFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):
         FeatureExtractor.__init__(self, queries)
