@@ -11,9 +11,11 @@ from pcap_parser import *
 # ADDED: Query target name (different from above since a name could map to different addresses)
 
 #### TODO
-# 5. Reverse DNS entry IP address ranges
-# 6. Query source-target association (e.g., client/stub-recursive association)
-# 9. Query diversity (character differences, URI component differences, etc.)
+### 5. Reverse DNS entry IP address ranges
+### 6. Query source-target association (e.g., client/stub-recursive association)
+# 7. Query diversity entropy
+# 9. Query diversity stddev 
+# -. Query diversity number of URI component differences
 
 #### Requires more than one PCAP file (into and out of a resolver)
 # 10. Resolution chain length (number of recursive queries)
@@ -56,7 +58,7 @@ class TestFeatureExtractor(FeatureExtractor):
 
         return features, sources
 
-class QueryDiversityFeatureExtractor(FeatureExtractor):
+class QueryEntropyDiversityFeatureExtractor(FeatureExtractor):
     ''' Template for new feature extractors
     '''
     def __init__(self, queries):
@@ -98,12 +100,27 @@ class QueryDiversityFeatureExtractor(FeatureExtractor):
                     j += 1
                 offset = j
 
-                # TODO: compute the ``diversity'' of the queries sent in this time window
-                diversity = 0
+                # compute the count of each query name/target (by *exact* match)
+                prob = {}
+                total = 0
+                for query in queriesSent:
+                    if query.name not in prob:
+                        prob[query.name] = 0
+                        total += 1
+                    prob[query.name] += 1 
+
+                # compute the entropy
+                # H= -\sum p(x) log p(x)
+                acc = 0
+                for name in prob:
+                    p = float(prob[name]) / float(total)
+                    logp = math.log(p)
+                    acc += (p * logp)
+                entropy = acc * -1
 
                 if src not in sources:
                     sources[src] = len(sources)
-                feature = (sources[src], diversity)
+                feature = (sources[src], entropy)
                 features.append(feature)
 
             i = offset
