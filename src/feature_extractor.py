@@ -14,6 +14,8 @@ from pcap_parser import *
 # 5. Reverse DNS entry IP address ranges
 # 6. Query source-target association (e.g., client/stub-recursive association)
 # 9. Query diversity (character differences, URI component differences, etc.)
+
+#### Requires more than one PCAP file (into and out of a resolver)
 # 10. Resolution chain length (number of recursive queries)
 # 11. Resolution chain (domains in the chain itself)
 
