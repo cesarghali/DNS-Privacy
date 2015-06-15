@@ -1,4 +1,6 @@
 import sys
+import math
+import statistics
 from pcap_parser import *
 
 #### DONE
@@ -13,7 +15,7 @@ from pcap_parser import *
 #### TODO
 ### 5. Reverse DNS entry IP address ranges
 ### 6. Query source-target association (e.g., client/stub-recursive association)
-# 7. Query diversity entropy
+# DONE 7. Query diversity entropy
 # 9. Query diversity stddev 
 # -. Query diversity number of URI component differences
 
@@ -58,6 +60,74 @@ class TestFeatureExtractor(FeatureExtractor):
 
         return features, sources
 
+class QueryComponentDifferenceDiversityFeatureExtractor(FeatureExtractor):
+    ''' Template for new feature extractors
+    '''
+    def __init__(self, queries):
+        FeatureExtractor.__init__(self, queries)
+
+    def extract(self, prams = {"window" : 0.05}):
+        features = []
+        sources = {}
+
+        window = params["window"]
+
+        i = 0
+        while i < len(self.queries):
+            packet = self.queries[i]
+            offset = i + 1
+
+            if packet.query != None:
+                src = packet.query.srcAddress
+                targetName = packet.query.name
+                queriesSent = []
+                start = packet.ts
+                end = 0
+                j = offset
+                while j < len(self.queries):
+                    nextPacket = self.queries[j]
+
+                    # if the next packet was a query and issued by the same IP
+                    if nextPacket.query != None and nextPacket.query.srcAddress == src:
+
+                        # Check to see if it was issued for a different target, and if so, we start from here next time
+                        if nextPacket.query.srcAddress == src:
+                            queriesSent.append(nextPacket.query)
+
+                        # else, add it to the list if the name matches the original target name
+                        end = nextPacket.ts
+                        if end - start > window:
+                            break
+                            
+                    j += 1
+
+                offset = j
+
+                # compute the count of each query name/target (by *exact* match)
+                prob = {}
+                total = 0
+                for query in queriesSent:
+                    if query.name not in prob:
+                        prob[query.name] = 0
+                        total += 1
+                    prob[query.name] += 1 
+
+                # compute the stddev
+                ps = []
+                for name in prob:
+                    p = float(prob[name]) / float(total)
+                    ps.append(p)
+                stddev = statistics.stdev(ps)
+
+                if src not in sources:
+                    sources[src] = len(sources)
+                feature = (sources[src], stddev)
+                features.append(feature)
+
+            i = offset
+
+        return features, sources
+
 class QueryEntropyDiversityFeatureExtractor(FeatureExtractor):
     ''' Template for new feature extractors
     '''
@@ -98,6 +168,7 @@ class QueryEntropyDiversityFeatureExtractor(FeatureExtractor):
                             break
                             
                     j += 1
+
                 offset = j
 
                 # compute the count of each query name/target (by *exact* match)
