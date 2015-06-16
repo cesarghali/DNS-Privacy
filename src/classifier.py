@@ -4,6 +4,7 @@ from random import shuffle
 from sklearn.linear_model import SGDClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
+from sklearn.linear_model import LogisticRegression
 
 
 class color:
@@ -50,12 +51,14 @@ def sgd(trainingFeatures, trainingTarget, testFeatures, testTarget, options):
          lossFunction = chunks[0]
       else:
          print color.RED + "SGD loss function is not recognized" + color.END
+         usage()
          sys.exit(2)
 
       if chunks[1].isdigit() and int(chunks[1]) > 0:
          iterations = int(chunks[1])
       else:
          print color.RED + "SGD number of epoch must be a positive non-zero number" + color.END
+         usage()
          sys.exit(2)
 
    clf = SGDClassifier(loss=lossFunction, n_iter=iterations)
@@ -71,6 +74,21 @@ def tree(trainingFeatures, trainingTarget, testFeatures, testTarget):
 
 def svm(trainingFeatures, trainingTarget, testFeatures, testTarget):
    clf = SVC()
+   clf.fit(trainingFeatures, trainingTarget)
+   return clf.predict(testFeatures)
+
+
+def logistic(trainingFeatures, trainingTarget, testFeatures, testTarget, options):
+   regularization = 1.0
+   if options != "":
+      try:
+         regularization = float(options)
+      except ValueError:
+         print color.RED + "Logistic Regression regularization must be a float number" + color.END
+         usage()
+         sys.exit(2)
+
+   clf = LogisticRegression(C=regularization)
    clf.fit(trainingFeatures, trainingTarget)
    return clf.predict(testFeatures)
 
@@ -95,13 +113,14 @@ def usage():
    print ""
    print "\t" + color.BOLD + "input file:" + color.END + " must be csv, first column is target and rest are features"
    print "\t" + color.BOLD + "test percentage:" + color.END + " is the percentage of input data to be treated as test data"
-   print "\t" + color.BOLD + "classifiers:" + color.END + " comma seperated list of one or more classifiers to try. "\
-      "Options are: sgd, tree, svm"
+   print "\t" + color.BOLD + "classifiers:" + color.END + " comma seperated list of one or more classifiers to use in prediction "
+   print "\t             Options are: sgd, tree, svm, logistic"
    print "\t" + color.BOLD + "iterations:" + color.END + " number of classification iterations"
    print "\t" + color.BOLD + "options:" + color.END + " options to pass to the classifier"
-   print "\t\t" + color.UNDERLINE + "sgd:" + color.END + " [<loss={'hinge', 'log', 'modified_huber', 'squared_hinge'}>],<n_iter=int>]"
-   print "\t\t" + color.UNDERLINE + "tree:" + color.END + " none"
-   print "\t\t" + color.UNDERLINE + "svm:" + color.END + " none"
+   print "\t         " + color.UNDERLINE + "sgd:" + color.END + " [<loss={'hinge', 'log', 'modified_huber', 'squared_hinge'}>],<n_iter=int>]"
+   print "\t         " + color.UNDERLINE + "tree:" + color.END + " none"
+   print "\t         " + color.UNDERLINE + "svm:" + color.END + " none"
+   print "\t         " + color.UNDERLINE + "logistic:" + color.END + " [<regularization=float>]"
    print ""
 
 
@@ -163,6 +182,8 @@ def main(argv):
             testTargetPredicted.append(tree(trainingFeatures, trainingTarget, testFeatures, testTarget))
          elif cls == "svm":
             testTargetPredicted.append(svm(trainingFeatures, trainingTarget, testFeatures, testTarget))
+         elif cls == "logistic":
+            testTargetPredicted.append(logistic(trainingFeatures, trainingTarget, testFeatures, testTarget, options))
          else:
             print color.RED + "Unknown classifier" + color.END
             usage()
