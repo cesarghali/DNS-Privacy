@@ -1,5 +1,7 @@
 import sys, getopt
 import math
+import time
+import datetime
 from random import shuffle
 from sklearn.linear_model import SGDClassifier
 from sklearn.tree import DecisionTreeClassifier
@@ -181,6 +183,7 @@ def main(argv):
    print >> sys.stderr, "Reading input file..."
    data = readInput(fileName)
    errorRate = 0.0
+   startTime = time.time()
    for i in range(0, iterations):
       print >> sys.stderr, "\rIteration " + str(i + 1) + ":",
       trainingFeatures, trainingTarget, testFeatures, testTarget = processInput(data, testPercentage)
@@ -206,9 +209,16 @@ def main(argv):
       print >> sys.stderr, "calculating error...",
       errorRate = errorRate + error(testTarget, testTargetPredicted)
 
+   endTime = time.time()
+
    print >> sys.stderr, ""
+   print >> sys.stderr, "Execution time: " + str(datetime.timedelta(seconds=(endTime - startTime)))
    print >> sys.stderr, "Error rate: " + str(errorRate / iterations)
-   print >> sys.stdout, fileName + "\t" + classifiers + "\t" + options + "\t" + str(errorRate / iterations)
+   print >> sys.stdout, fileName + "\t" +\
+      classifiers + "\t" +\
+      options + "\t" +\
+      str(datetime.timedelta(seconds=(endTime - startTime))) + "\t" +\
+      str(errorRate / iterations)
 
 
 if __name__ == "__main__":
