@@ -391,8 +391,28 @@ class QueryLengthFeatureExtractor(FeatureExtractor):
             feature = (sources[src], queryLength)
 
             features.append(feature)
-        print sources
         return features, sources
+
+def join(featureSet):
+    if len(featureSet) == 1:
+        return featureSet[0]
+    else:
+        index = 0
+        numFeatures = len(featureSet) - 1
+        joinedFeatures = []
+        for features in featureSet:
+
+            for feature in features:
+                entry = [feature[0]] # feature[0] is always the source -- could be wrapped up in a class
+                for i in range(index):
+                    entry.append(0)
+                entry.append(feature[1])
+                for i in range(numFeatures - index):
+                    entry.append(0)
+                joinedFeatures.append(entry)
+
+            index += 1
+        return joinedFeatures
 
 if __name__ == "__main__":
     desc = '''
@@ -415,7 +435,7 @@ Parse a PCAP file and extract a set of features for classification.
         sys.exit(-1)
         
     filename = args.file
-    print >> sys.stderr, "Parsing...", filename
+    print >> sys.stderr, "$> Parsing...", filename
     
     parser = PacketParser(filename)
     dnsPackets = parser.parseDNS(filename)
@@ -436,16 +456,17 @@ Parse a PCAP file and extract a set of features for classification.
             features, sources = extractor.extract()
         elif key == "qf" and val != None:
             extractor = QueryFrequencyFeatureExtractor(dnsPackets)
-            extractor = TargetQueryFrequencyFeatureExtractor(dnsPackets)
+            features, sources = extractor.extract({"window" : float(val)})
         elif key == "tf" and val != None:
             extractor = TargetQueryFrequencyFeatureExtractor(dnsPackets)
-            features, sources = extractor.extract()
+            features, sources = extractor.extract({"window" : float(val)})
 
-        featureSet.append(features)
-        sourceSet.append(features)
+        if len(features) > 0:
+            featureSet.append(features)
+            sourceSet.append(features)
 
-        formatter = FeatureFormatter(features)
-        print formatter.toCSV(sys.stdout)
+    formatter = FeatureFormatter(join(featureSet))
+    formatter.toCSV(sys.stdout)
 
-    print >> sys.stderr, "Done. Parsed %d DNS packets" % len(dnsPackets)
+    print >> sys.stderr, "$> Done. Parsed %d DNS packets" % len(dnsPackets)
 
