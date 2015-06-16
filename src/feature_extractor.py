@@ -399,7 +399,8 @@ if __name__ == "__main__":
     filename = sys.argv[1]
     print >> sys.stderr, "Parsing...", filename
     
-    dnsPackets = parse(filename)
+    parser = PacketParser(filename)
+    dnsPackets = parser.parseDNS(filename)
 
     # Instantiate an extractor
     # extractor = QueryLengthFeatureExtractor(dnsPackets)

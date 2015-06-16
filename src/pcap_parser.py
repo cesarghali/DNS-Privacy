@@ -42,21 +42,7 @@ class Query(object):
         self.qr = self.dns.qr
         self.type = self.query.type
 
-def parse(filename):
-    pcapFile = dpkt.pcap.Reader(open(filename,'r'))
-
-    dnsPackets = []
-    index = 0
-    for ts, pkt in pcapFile:
-        eth = dpkt.ethernet.Ethernet(pkt) 
-        packet = Packet(index, eth, ts)
-        if packet.isDNS:
-            dnsPackets.append(packet)
-        index = index + 1
-
-    return dnsPackets
-
-class Packet(object):
+class DNSPacket(object):
     def __init__(self, index, ethernetPacket, ts):
         self.ethernetPacket = ethernetPacket
         self.query = None
@@ -95,3 +81,22 @@ class Packet(object):
                     print tb
         else:
             return False
+
+
+class PacketParser(object):
+    def __init__(self, filename):
+        self.filename = filename
+
+    def parseDNS(self, filename):
+        pcapFile = dpkt.pcap.Reader(open(filename,'r'))
+
+        dnsPackets = []
+        index = 0
+        for ts, pkt in pcapFile:
+            eth = dpkt.ethernet.Ethernet(pkt) 
+            packet = DNSPacket(index, eth, ts)
+            if packet.isDNS:
+                dnsPackets.append(packet)
+            index = index + 1
+
+        return dnsPackets
