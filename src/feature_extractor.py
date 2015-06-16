@@ -1,6 +1,9 @@
+#!/usr/bin/env python
+
 import sys
 import math
 import statistics
+import argparse
 from pcap_parser import *
 
 #### DONE
@@ -11,12 +14,12 @@ from pcap_parser import *
 # REMOVED -- not needed 7. Query source identity (address)
 # DONE 8. Query target address 
 # ADDED: Query target name (different from above since a name could map to different addresses)
+# DONE 7. Query diversity entropy
+# DONE 9. Query diversity stddev 
 
 #### TODO
 ### 5. Reverse DNS entry IP address ranges
 ### 6. Query source-target association (e.g., client/stub-recursive association)
-# DONE 7. Query diversity entropy
-# 9. Query diversity stddev 
 # -. Query diversity number of URI component differences
 
 #### Requires more than one PCAP file (into and out of a resolver)
@@ -392,28 +395,57 @@ class QueryLengthFeatureExtractor(FeatureExtractor):
         return features, sources
 
 if __name__ == "__main__":
-    if (len(sys.argv) != 2):
-        print >> sys.stderr, "usage: python feature_extractor.py <pcap file>"
+    desc = '''
+Parse a PCAP file and extract a set of features for classification.
+'''
+
+    parser = argparse.ArgumentParser(prog='feature_extractor', formatter_class=argparse.RawDescriptionHelpFormatter, description=desc)
+    parser.add_argument('-f', '--file', action="store", required=True, help="Relative path to PCAP file to parse")
+    parser.add_argument('--ql', default=False, action="store_true", help="Query length feature")
+    parser.add_argument('--qrt', default=False, action="store_true", help="Query resolution time feature")
+    parser.add_argument('--qf', action="store", help="Query frequency with parameterized window")
+    parser.add_argument('--tf', action="store", help="Source target frequency with parameterized window")
+    
+    # TODO: add other features to the cmdline as needed
+
+    args = parser.parse_args()
+
+    if (len(sys.argv) == 1):
+        parser.print_help()
         sys.exit(-1)
         
-    filename = sys.argv[1]
+    filename = args.file
     print >> sys.stderr, "Parsing...", filename
     
     parser = PacketParser(filename)
     dnsPackets = parser.parseDNS(filename)
 
-    # Instantiate an extractor
-    # extractor = QueryLengthFeatureExtractor(dnsPackets)
-    # extractor = QueryResolutionTimeFeatureExtractor(dnsPackets) 
-    # extractor = QueryFrequencyFeatureExtractor(dnsPackets)
-    extractor = TargetQueryFrequencyFeatureExtractor(dnsPackets)
+    # Run each specified extractor over the packets
+    featureSet = []
+    sourceSet = []
+    for key in vars(args):
+        val = vars(args)[key]
+        features = []
+        sources = []
 
-    # Get the features
-    features, sources = extractor.extract()
-    print >> sys.stderr, "IP address sources:", sources
+        if key == "ql" and val:
+            extractor = QueryLengthFeatureExtractor(dnsPackets)
+            features, sources = extractor.extract()
+        elif key == "qrt" and val:
+            extractor = QueryResolutionTimeFeatureExtractor(dnsPackets) 
+            features, sources = extractor.extract()
+        elif key == "qf" and val != None:
+            extractor = QueryFrequencyFeatureExtractor(dnsPackets)
+            extractor = TargetQueryFrequencyFeatureExtractor(dnsPackets)
+        elif key == "tf" and val != None:
+            extractor = TargetQueryFrequencyFeatureExtractor(dnsPackets)
+            features, sources = extractor.extract()
 
-    formatter = FeatureFormatter(features)
-    print formatter.toCSV(sys.stdout)
+        featureSet.append(features)
+        sourceSet.append(features)
+
+        formatter = FeatureFormatter(features)
+        print formatter.toCSV(sys.stdout)
 
     print >> sys.stderr, "Done. Parsed %d DNS packets" % len(dnsPackets)
 
