@@ -50,14 +50,14 @@ def sgd(trainingFeatures, trainingTarget, testFeatures, testTarget, options):
       if chunks[0] in ("hinge", "log", "modified_huber", "squared_hinge"):
          lossFunction = chunks[0]
       else:
-         print color.RED + "SGD loss function is not recognized" + color.END
+         print >> sys.stderr, color.RED + "SGD loss function is not recognized" + color.END
          usage()
          sys.exit(2)
 
       if chunks[1].isdigit() and int(chunks[1]) > 0:
          iterations = int(chunks[1])
       else:
-         print color.RED + "SGD number of epoch must be a positive non-zero number" + color.END
+         print >> sys.stderr, color.RED + "SGD number of epoch must be a positive non-zero number" + color.END
          usage()
          sys.exit(2)
 
@@ -84,7 +84,7 @@ def logistic(trainingFeatures, trainingTarget, testFeatures, testTarget, options
       try:
          regularization = float(options)
       except ValueError:
-         print color.RED + "Logistic Regression regularization must be a float number" + color.END
+         print >> sys.stderr, color.RED + "Logistic Regression regularization must be a float number" + color.END
          usage()
          sys.exit(2)
 
@@ -108,20 +108,23 @@ def error(testTarget, testTargetPredicted):
 
 
 def usage():
-   print ""
-   print "usage: classifier.py -i <input file> [-p <test percentage>] -c <classifiers> [-t <iterations>] [-o <options>]"
-   print ""
-   print "\t" + color.BOLD + "input file:" + color.END + " must be csv, first column is target and rest are features"
-   print "\t" + color.BOLD + "test percentage:" + color.END + " is the percentage of input data to be treated as test data"
-   print "\t" + color.BOLD + "classifiers:" + color.END + " comma seperated list of one or more classifiers to use in prediction "
-   print "\t             Options are: sgd, tree, svm, logistic"
-   print "\t" + color.BOLD + "iterations:" + color.END + " number of classification iterations"
-   print "\t" + color.BOLD + "options:" + color.END + " options to pass to the classifier"
-   print "\t         " + color.UNDERLINE + "sgd:" + color.END + " [<loss={'hinge', 'log', 'modified_huber', 'squared_hinge'}>],<n_iter=int>]"
-   print "\t         " + color.UNDERLINE + "tree:" + color.END + " none"
-   print "\t         " + color.UNDERLINE + "svm:" + color.END + " none"
-   print "\t         " + color.UNDERLINE + "logistic:" + color.END + " [<regularization=float>]"
-   print ""
+   print >> sys.stderr, "usage: classifier -i FILE [-p PERCENTAGE] -c CLASSIFIERS [-t ITERATIONS] [-o OPTIONS]"
+   print >> sys.stderr, ""
+   print >> sys.stderr, "Run a set of classifiers on features extracted from DNS traces and calculate error rate."
+   print >> sys.stderr, ""
+   print >> sys.stderr, "arguments:"
+   print >> sys.stderr, "  -h, --help                                 show this help message and exit"
+   print >> sys.stderr, "  -i FILE, --ifile FILE                      relative path to csv containing: first column is target and rest are features"
+   print >> sys.stderr, "  -p PERCENTAGE, --percentage PERCENTAGE     the percentage of input data to be treated as test data"
+   print >> sys.stderr, "  -c CLASSIFIERS, --classifiers CLASSIFIERS  comma seperated list of one or more classifiers to use in prediction"
+   print >> sys.stderr, "                                             Options are: sgd, tree, svm, logistic"
+   print >> sys.stderr, "  -t ITERATIONS, --iterations ITERATIONS     number of classification iterations"
+   print >> sys.stderr, "  -o OPTIONS, --option OPTION                options to pass to the classifiers"
+   print >> sys.stderr, "                                               " + color.UNDERLINE + "sgd:" + color.END +\
+      " [loss={'hinge', 'log', 'modified_huber', 'squared_hinge'}],n_iter=INT]"
+   print >> sys.stderr, "                                               " + color.UNDERLINE + "tree:" + color.END + " none"
+   print >> sys.stderr, "                                               " + color.UNDERLINE + "svm:" + color.END + " none"
+   print >> sys.stderr, "                                               " + color.UNDERLINE + "logistic:" + color.END + " [regularization=FLOAT]"
 
 
 def main(argv):
@@ -161,37 +164,51 @@ def main(argv):
          sys.exit(2)
 
    if fileName == "":
-      print color.RED + "Input file must be specified." + color.END
+      print >> sys.stderr, color.RED + "Input file must be specified." + color.END
       usage()
       sys.exit(2)
 
    if classifiers == "":
-      print color.RED + "Classifier(s) must be specified." + color.END
+      print >> sys.stderr, color.RED + "Classifier(s) must be specified." + color.END
       usage()
       sys.exit(2)
 
+   print >> sys.stderr, "Input file: " + fileName
+   print >> sys.stderr, "Classifiers: " + classifiers
+   print >> sys.stderr, "Options: " + options
+   print >> sys.stderr, ""
+
+   print >> sys.stderr, "Reading input file..."
    data = readInput(fileName)
    errorRate = 0.0
    for i in range(0, iterations):
+      print >> sys.stderr, "\rIteration " + str(i + 1) + ":",
       trainingFeatures, trainingTarget, testFeatures, testTarget = processInput(data, testPercentage)
       testTargetPredicted = []
       for cls in classifiers.split(","):
          if cls == "sgd":
+            print >> sys.stderr, "running SGD...",
             testTargetPredicted.append(sgd(trainingFeatures, trainingTarget, testFeatures, testTarget, options))
          elif cls == "tree":
+            print >> sys.stderr, "running Decision Tree...",
             testTargetPredicted.append(tree(trainingFeatures, trainingTarget, testFeatures, testTarget))
          elif cls == "svm":
+            print >> sys.stderr, "running SVM...",
             testTargetPredicted.append(svm(trainingFeatures, trainingTarget, testFeatures, testTarget))
          elif cls == "logistic":
+            print >> sys.stderr, "running Logistic Regression...",
             testTargetPredicted.append(logistic(trainingFeatures, trainingTarget, testFeatures, testTarget, options))
          else:
-            print color.RED + "Unknown classifier" + color.END
+            print >> sys.stderr, olor.RED + "Unknown classifier" + color.END
             usage()
             sys.exit(2)
 
+      print >> sys.stderr, "calculating error...",
       errorRate = errorRate + error(testTarget, testTargetPredicted)
 
-   print "Error rate: " + str(errorRate / iterations)
+   print >> sys.stderr, ""
+   print >> sys.stderr, "Error rate: " + str(errorRate / iterations)
+   print >> sys.stdout, fileName + "\t" + classifiers + "\t" + options + "\t" + str(errorRate / iterations)
 
 
 if __name__ == "__main__":
