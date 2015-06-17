@@ -29,6 +29,44 @@ from pcap_parser import *
 #### More sophisticated
 # 12. Monitoring reply from cache (Adv controls in/out links of R and can know if something is served from cache even if the source of the query is anonymised)
 
+def computeComponentDifferences(list1, list2):
+    return 0
+
+def computeQueryDifferences(queries):
+    differences = 0
+    for firstIndex, v1 in enumerate(queries):
+        for secondIndex, v2 in enumerate(queries):
+            if firstIndex != secondIndex:
+                query1 = v1.split(".")
+                query2 = v2.split(".")
+
+                diff = computeComponentDifferences(query1, query2)
+                differences += diff
+    return differences
+
+def computeQueryEntropy(queries):
+    prob = {}
+    total = 0
+    for query in queries:
+        if query.name not in prob:
+            prob[query.name] = 0
+            total += 1
+        prob[query.name] += 1
+
+    # compute the entropy
+    # H= -\sum p(x) log p(x)
+    acc = 0
+    for name in prob:
+        p = float(prob[name]) / float(total)
+        logp = math.log(p)
+        acc += (p * logp)
+    entropy = acc * -1
+
+    return entropy
+
+def computeQueryFrequency(queries, window):
+    return float(len(queries)) / float(window)
+
 class WindowFeatureExtractor(object):
     def __init__(self, window, processingFunction):
         self.window = window
@@ -118,7 +156,7 @@ class QueryComponentDifferenceDiversityFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):
         FeatureExtractor.__init__(self, queries)
 
-    def extract(self, computeDifference, params = {"window" : 0.05}):
+    def extract(self, params = {"window" : 0.05}):
         features = []
         sources = {}
 
@@ -132,17 +170,7 @@ class QueryComponentDifferenceDiversityFeatureExtractor(FeatureExtractor):
             if packet.query != None:
                 src = packet.query.srcAddress
                 packetsSent, offset = self.getPacketsFromSourceInWindow(offset, src, window)
-
-                differences = 0
-                for firstIndex, v1 in enumerate(queriesSent):
-                    for secondIndex, v2 in enumerate(queriesSent):
-                        if firstIndex != secondIndex:
-                            query1 = v1.split(".")
-                            query2 = v2.split(".")
-
-                            diff = computeDifference(query1, query2)
-                            differences += diff
-
+                differences = computeQueryDifferences(packetsSent)
                 if src not in sources:
                     sources[src] = len(sources)
                 feature = (sources[src], differences)
@@ -171,48 +199,8 @@ class QueryEntropyDiversityFeatureExtractor(FeatureExtractor):
 
             if packet.query != None:
                 src = packet.query.srcAddress
-                targetName = packet.query.name
-                queriesSent = []
-                start = packet.ts
-                end = 0
-                j = offset
-                while j < len(self.queries):
-                    nextPacket = self.queries[j]
-
-                    # if the next packet was a query and issued by the same IP
-                    if nextPacket.query != None and nextPacket.query.srcAddress == src:
-
-                        # Check to see if it was issued for a different target, and if so, we start from here next time
-                        if nextPacket.query.srcAddress == src:
-                            queriesSent.append(nextPacket.query)
-
-                        # else, add it to the list if the name matches the original target name
-                        end = nextPacket.ts
-                        if end - start > window:
-                            break
-
-                    j += 1
-
-                offset = j
-
-                # compute the count of each query name/target (by *exact* match)
-                prob = {}
-                total = 0
-                for query in queriesSent:
-                    if query.name not in prob:
-                        prob[query.name] = 0
-                        total += 1
-                    prob[query.name] += 1
-
-                # compute the entropy
-                # H= -\sum p(x) log p(x)
-                acc = 0
-                for name in prob:
-                    p = float(prob[name]) / float(total)
-                    logp = math.log(p)
-                    acc += (p * logp)
-                entropy = acc * -1
-
+                packetsSent, offset = self.getPacketsFromSourceInWindow(offset, src, window)
+                entropy = computeQueryEntropy(packetsSent)
                 if src not in sources:
                     sources[src] = len(sources)
                 feature = (sources[src], entropy)
@@ -239,35 +227,19 @@ class TargetQueryFrequencyFeatureExtractor(FeatureExtractor):
 
             if packet.query != None:
                 src = packet.query.srcAddress
-                targetName = packet.query.name
-                numberOfQueries = 1
-                start = packet.ts
-                end = 0
-                j = offset
-                while j < len(self.queries):
-                    nextPacket = self.queries[j]
-
-                    # if the next packet was a query and issued by the same IP
-                    if nextPacket.query != None and nextPacket.query.srcAddress == src:
-
-                        # Check to see if it was issued for a different target, and if so, we start from here next time
-                        if nextPacket.query.name != targetName and offset != (i + 1):
-                            offset = j # set the next query from which to start
-
-                        # else, add it to the list if the name matches the original target name
-                        end = nextPacket.ts
-                        if end - start > window:
-                            break
-                        elif nextPacket.query.name == targetName:
-                            numberOfQueries += 1
-                    j += 1
-
-                frequency = float(numberOfQueries) / float(window)
-
+                packetsSent, offset = self.getPacketsFromSourceInWindow(offset, src, window)
+                frequency = computeQueryFrequency(packetsSent, window)
                 if src not in sources:
                     sources[src] = len(sources)
                 feature = (sources[src], frequency)
                 features.append(feature)
+
+                # Since we're concerned with target frequency, the window only
+                # moves forward when the target query changes
+                targetName = packet.query.name
+                for index, packet in enumerate(packetsSent):
+                    if packet.query.name != targetName and index != 0:
+                        offset = i + index
 
             i = offset
 
@@ -287,35 +259,16 @@ class QueryFrequencyFeatureExtractor(FeatureExtractor):
         while i < len(self.queries):
             packet = self.queries[i]
             offset = i + 1
+
             if packet.query != None:
                 src = packet.query.srcAddress
-                numberOfQueries = 1
-                start = packet.ts
-                end = 0
-                j = offset
-                while j < len(self.queries):
-                    nextPacket = self.queries[j]
-                    if nextPacket.query != None:
-
-                        # this next packet is the start of a new window, so record this offset
-                        if nextPacket.query.srcAddress != src and offset != (i + 1):
-                            offset = j
-
-                        # check to see if the src address is the same, and if so, it contributes
-                        elif nextPacket.query.srcAddress == src:
-                            end = nextPacket.ts
-                            if end - start > window:
-                                break
-                            else:
-                                numberOfQueries += 1
-                    j += 1
-
-                frequency = float(numberOfQueries) / float(window)
-
+                packetsSent, offset = self.getPacketsFromSourceInWindow(offset, src, window)
+                frequency = computeQueryFrequency(packetsSent, window)
                 if src not in sources:
                     sources[src] = len(sources)
                 feature = (sources[src], frequency)
                 features.append(feature)
+
             i = offset
         return features, sources
 
