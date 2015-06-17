@@ -9,18 +9,18 @@ from pcap_parser import *
 #### DONE
 # DONE 1. Relative (per-user) query length
 # DONE 2. Relative source query frequency
-# DONE 3. Relative target query frequency 
+# DONE 3. Relative target query frequency
 # DONE 4. Query resolution length (time)
 # REMOVED -- not needed 7. Query source identity (address)
-# DONE 8. Query target address 
+# DONE 8. Query target address
 # ADDED: Query target name (different from above since a name could map to different addresses)
 # DONE 7. Query diversity entropy
-# DONE 9. Query diversity stddev 
+# DONE 9. Query diversity stddev
+# DONE 10. Query diversity number of URI component differences
 
-#### TODO
+#### QUESTIONABLE
 ### 5. Reverse DNS entry IP address ranges
 ### 6. Query source-target association (e.g., client/stub-recursive association)
-# -. Query diversity number of URI component differences
 
 #### Requires more than one PCAP file (into and out of a resolver)
 # 10. Resolution chain length (number of recursive queries)
@@ -69,7 +69,7 @@ class QueryComponentDifferenceDiversityFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):
         FeatureExtractor.__init__(self, queries)
 
-    def extract(self, prams = {"window" : 0.05}):
+    def extract(self, computeDifference, params = {"window" : 0.05}):
         features = []
         sources = {}
 
@@ -86,6 +86,7 @@ class QueryComponentDifferenceDiversityFeatureExtractor(FeatureExtractor):
                 queriesSent = []
                 start = packet.ts
                 end = 0
+
                 j = offset
                 while j < len(self.queries):
                     nextPacket = self.queries[j]
@@ -101,30 +102,25 @@ class QueryComponentDifferenceDiversityFeatureExtractor(FeatureExtractor):
                         end = nextPacket.ts
                         if end - start > window:
                             break
-                            
+
                     j += 1
 
                 offset = j
 
                 # compute the count of each query name/target (by *exact* match)
-                prob = {}
-                total = 0
-                for query in queriesSent:
-                    if query.name not in prob:
-                        prob[query.name] = 0
-                        total += 1
-                    prob[query.name] += 1 
+                differences = 0
+                for firstIndex, v1 in enumerate(queriesSent):
+                    for secondIndex, v2 in enumerate(queriesSent):
+                        if firstIndex != secondIndex:
+                            query1 = v1.split(".")
+                            query2 = v2.split(".")
 
-                # compute the stddev
-                ps = []
-                for name in prob:
-                    p = float(prob[name]) / float(total)
-                    ps.append(p)
-                stddev = statistics.stdev(ps)
+                            diff = computeDifference(query1, query2)
+                            differences += diff
 
                 if src not in sources:
                     sources[src] = len(sources)
-                feature = (sources[src], stddev)
+                feature = (sources[src], differences)
                 features.append(feature)
 
             i = offset
@@ -169,7 +165,7 @@ class QueryEntropyDiversityFeatureExtractor(FeatureExtractor):
                         end = nextPacket.ts
                         if end - start > window:
                             break
-                            
+
                     j += 1
 
                 offset = j
@@ -181,7 +177,7 @@ class QueryEntropyDiversityFeatureExtractor(FeatureExtractor):
                     if query.name not in prob:
                         prob[query.name] = 0
                         total += 1
-                    prob[query.name] += 1 
+                    prob[query.name] += 1
 
                 # compute the entropy
                 # H= -\sum p(x) log p(x)
@@ -219,7 +215,7 @@ class TargetQueryFrequencyFeatureExtractor(FeatureExtractor):
             if packet.query != None:
                 src = packet.query.srcAddress
                 targetName = packet.query.name
-                numberOfQueries = 1 
+                numberOfQueries = 1
                 start = packet.ts
                 end = 0
                 j = offset
@@ -230,7 +226,7 @@ class TargetQueryFrequencyFeatureExtractor(FeatureExtractor):
                     if nextPacket.query != None and nextPacket.query.srcAddress == src:
 
                         # Check to see if it was issued for a different target, and if so, we start from here next time
-                        if nextPacket.query.name != targetName and offset != (i + 1): 
+                        if nextPacket.query.name != targetName and offset != (i + 1):
                             offset = j # set the next query from which to start
 
                         # else, add it to the list if the name matches the original target name
@@ -268,7 +264,7 @@ class QueryFrequencyFeatureExtractor(FeatureExtractor):
             offset = i + 1
             if packet.query != None:
                 src = packet.query.srcAddress
-                numberOfQueries = 1 
+                numberOfQueries = 1
                 start = packet.ts
                 end = 0
                 j = offset
@@ -289,7 +285,7 @@ class QueryFrequencyFeatureExtractor(FeatureExtractor):
                                 numberOfQueries += 1
                     j += 1
 
-                frequency = float(numberOfQueries) / float(window)              
+                frequency = float(numberOfQueries) / float(window)
 
                 if src not in sources:
                     sources[src] = len(sources)
@@ -360,13 +356,13 @@ class QueryResolutionTimeFeatureExtractor(FeatureExtractor):
                         delta = response.ts - packet.ts
                         if delta > 0:
                             if src not in sources:
-                                sources[src] = len(sources) 
+                                sources[src] = len(sources)
                             feature = (sources[src], delta)
 
                             features.append(feature)
 
         return features, sources
-  
+
 class QueryLengthFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):
         FeatureExtractor.__init__(self, queries)
@@ -387,7 +383,7 @@ class QueryLengthFeatureExtractor(FeatureExtractor):
                 queryLength = len(packet.records[0].target)
 
             if src not in sources:
-                sources[src] = len(sources) 
+                sources[src] = len(sources)
             feature = (sources[src], queryLength)
 
             features.append(feature)
@@ -425,7 +421,7 @@ Parse a PCAP file and extract a set of features for classification.
     parser.add_argument('--qrt', default=False, action="store_true", help="Query resolution time feature")
     parser.add_argument('--qf', action="store", help="Query frequency with parameterized window")
     parser.add_argument('--tf', action="store", help="Source target frequency with parameterized window")
-    
+
     # TODO: add other features to the cmdline as needed
 
     args = parser.parse_args()
@@ -433,10 +429,10 @@ Parse a PCAP file and extract a set of features for classification.
     if (len(sys.argv) == 1):
         parser.print_help()
         sys.exit(-1)
-        
+
     filename = args.file
     print >> sys.stderr, "$> Parsing...", filename
-    
+
     parser = PacketParser(filename)
     dnsPackets = parser.parseDNS(filename)
 
@@ -452,7 +448,7 @@ Parse a PCAP file and extract a set of features for classification.
             extractor = QueryLengthFeatureExtractor(dnsPackets)
             features, sources = extractor.extract()
         elif key == "qrt" and val:
-            extractor = QueryResolutionTimeFeatureExtractor(dnsPackets) 
+            extractor = QueryResolutionTimeFeatureExtractor(dnsPackets)
             features, sources = extractor.extract()
         elif key == "qf" and val != None:
             extractor = QueryFrequencyFeatureExtractor(dnsPackets)
@@ -469,4 +465,3 @@ Parse a PCAP file and extract a set of features for classification.
     formatter.toCSV(sys.stdout)
 
     print >> sys.stderr, "$> Done. Parsed %d DNS packets" % len(dnsPackets)
-
