@@ -94,7 +94,23 @@ class WindowedFeatureExtractor(FeatureExtractor):
 
         window = self.extractor.window
 
-        # TODO: write the general code here
+        i = 0
+        while i < len(self.queries):
+            packet = self.queries[i]
+            offset = i + 1
+
+            if packet.query != None:
+                src = packet.query.srcAddress
+                packetsSent, offset = self.getPacketsFromSourceInWindow(offset, src, window)
+                featureValue = self.extractor(queriesSent)
+                if src not in sources:
+                    sources[src] = len(sources)
+                feature = (sources[src], featureValue)
+                features.append(feature)
+
+            i = offset
+
+        return features, sources
 
         return features
 
@@ -115,7 +131,7 @@ class QueryComponentDifferenceDiversityFeatureExtractor(FeatureExtractor):
 
             if packet.query != None:
                 src = packet.query.srcAddress
-                packetsSent, offset = self.getPacketsFromSourceInWindow(offset, src, window):
+                packetsSent, offset = self.getPacketsFromSourceInWindow(offset, src, window)
 
                 differences = 0
                 for firstIndex, v1 in enumerate(queriesSent):
