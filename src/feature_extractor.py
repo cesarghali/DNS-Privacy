@@ -103,7 +103,7 @@ class FeatureExtractor(object):
             offset += 1
         return packets, offset
 
-    def extract(self):
+    def extract(self, params = {}):
         pass
 
 class TestFeatureExtractor(FeatureExtractor):
@@ -112,7 +112,7 @@ class TestFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):
         FeatureExtractor.__init__(self, queries)
 
-    def extract(self):
+    def extract(self, params = {}):
         features = []
         sources = {}
 
@@ -126,7 +126,7 @@ class WindowedFeatureExtractor(FeatureExtractor):
         FeatureExtractor.__init__(self, queries)
         self.extractor = windowExtractor
 
-    def extract(self):
+    def extract(self, params = {}):
         features = []
         sources = {}
 
@@ -276,7 +276,7 @@ class TargetAddressFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):
         FeatureExtractor.__init__(self, queries)
 
-    def extract(self):
+    def extract(self, params = {}):
         features = []
         sources = {}
 
@@ -298,7 +298,7 @@ class TargetNameFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):
         FeatureExtractor.__init__(self, queries)
 
-    def extract(self):
+    def extract(self, params = {}):
         features = []
         sources = {}
 
@@ -318,7 +318,7 @@ class QueryResolutionTimeFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):
         FeatureExtractor.__init__(self, queries)
 
-    def extract(self):
+    def extract(self, params = {}):
         features = []
         sources = {}
 
@@ -345,7 +345,7 @@ class QueryLengthFeatureExtractor(FeatureExtractor):
     def __init__(self, queries):
         FeatureExtractor.__init__(self, queries)
 
-    def extract(self):
+    def extract(self, params = {}):
         sources = {}
         features = []
 
@@ -399,8 +399,10 @@ Parse a PCAP file and extract a set of features for classification.
     parser.add_argument('--qrt', default=False, action="store_true", help="Query resolution time feature")
     parser.add_argument('--qf', action="store", help="Query frequency with parameterized window")
     parser.add_argument('--tf', action="store", help="Source target frequency with parameterized window")
-
-    # TODO: add other features to the cmdline as needed
+    parser.add_argument('--tn', action="store", help="Query target name feature")
+    parser.add_argument('--ta', action="store", help="Query target address feature")
+    parser.add_argument('--qcd', default=False, action="store_true", help="Source query (single) component differences feature")
+    parser.add_argument('--qce', default=False, action="store_true", help="Source query entropy feature")
 
     args = parser.parse_args()
 
@@ -422,23 +424,38 @@ Parse a PCAP file and extract a set of features for classification.
         features = []
         sources = []
 
+        # By default, the extractors don't require any parameters
+        params = {}
+
+        # Instantiate the extractor
         if key == "ql" and val:
             extractor = QueryLengthFeatureExtractor(dnsPackets)
-            features, sources = extractor.extract()
         elif key == "qrt" and val:
             extractor = QueryResolutionTimeFeatureExtractor(dnsPackets)
-            features, sources = extractor.extract()
         elif key == "qf" and val != None:
             extractor = QueryFrequencyFeatureExtractor(dnsPackets)
-            features, sources = extractor.extract({"window" : float(val)})
+            params = {"window" : float(val)}
         elif key == "tf" and val != None:
             extractor = TargetQueryFrequencyFeatureExtractor(dnsPackets)
-            features, sources = extractor.extract({"window" : float(val)})
+            params = {"window" : float(val)}
+        elif key == "tn" and val:
+            extractor = TargetNameFeatureExtractor(dnsPackets)
+        elif key == "ta" and val:
+            extractor = TargetAddressFeatureExtractor(dnsPackets)
+        elif key == "qcd" and val != None:
+            extractor = QueryComponentDifferenceDiversityFeatureExtractor(dnsPackets)
+            params = {"window" : float(val)}
+        elif key == "qce" and val != None:
+            extractor = QueryEntropyDiversityFeatureExtractor(dnsPackets)
+            params = {"window" : float(val)}
 
+        # Extract the features and, if not-empty, add them to the running set
+        features, sources = extractor.extract(params)
         if len(features) > 0:
             featureSet.append(features)
             sourceSet.append(features)
 
+    # Format the feature using CSV (maybe later add more formatting options)
     formatter = FeatureFormatter(join(featureSet))
     formatter.toCSV(sys.stdout)
 
