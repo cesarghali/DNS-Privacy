@@ -29,6 +29,14 @@ from pcap_parser import *
 #### More sophisticated
 # 12. Monitoring reply from cache (Adv controls in/out links of R and can know if something is served from cache even if the source of the query is anonymised)
 
+class WindowFeatureExtractor(object):
+    def __init__(self, window, processingFunction):
+        self.window = window
+        self.processingFunction = processingFunction
+
+    def process(self, queries):
+        return self.processingFunction(queries)
+
 class FeatureFormatter(object):
     ''' Class that formats lists of features for the output
     '''
@@ -44,6 +52,18 @@ class FeatureExtractor(object):
     '''
     def __init__(self, queries):
         self.queries = queries
+
+    def getPacketsFromSourceInWindow(self, offset, src, window):
+        packetsSent = []
+        firstPacket = self.queries[offset]
+        while offset < len(self.queries):
+            packet = self.queries[j]
+            if packet.query != None and packet.query.srcAddress == src:
+                packetsSent.append(nextPacket.query)
+                if packet.ts - firstPacket.ts > window:
+                    break
+            offset += 1
+        return packets, offset
 
     def extract(self):
         pass
@@ -63,9 +83,22 @@ class TestFeatureExtractor(FeatureExtractor):
 
         return features, sources
 
+class WindowedFeatureExtractor(FeatureExtractor):
+    def __init__(self, queries, windowExtractor):
+        FeatureExtractor.__init__(self, queries)
+        self.extractor = windowExtractor
+
+    def extract(self):
+        features = []
+        sources = {}
+
+        window = self.extractor.window
+
+        # TODO: write the general code here
+
+        return features
+
 class QueryComponentDifferenceDiversityFeatureExtractor(FeatureExtractor):
-    ''' Template for new feature extractors
-    '''
     def __init__(self, queries):
         FeatureExtractor.__init__(self, queries)
 
@@ -82,32 +115,8 @@ class QueryComponentDifferenceDiversityFeatureExtractor(FeatureExtractor):
 
             if packet.query != None:
                 src = packet.query.srcAddress
-                targetName = packet.query.name
-                queriesSent = []
-                start = packet.ts
-                end = 0
+                packetsSent, offset = self.getPacketsFromSourceInWindow(offset, src, window):
 
-                j = offset
-                while j < len(self.queries):
-                    nextPacket = self.queries[j]
-
-                    # if the next packet was a query and issued by the same IP
-                    if nextPacket.query != None and nextPacket.query.srcAddress == src:
-
-                        # Check to see if it was issued for a different target, and if so, we start from here next time
-                        if nextPacket.query.srcAddress == src:
-                            queriesSent.append(nextPacket.query)
-
-                        # else, add it to the list if the name matches the original target name
-                        end = nextPacket.ts
-                        if end - start > window:
-                            break
-
-                    j += 1
-
-                offset = j
-
-                # compute the count of each query name/target (by *exact* match)
                 differences = 0
                 for firstIndex, v1 in enumerate(queriesSent):
                     for secondIndex, v2 in enumerate(queriesSent):
