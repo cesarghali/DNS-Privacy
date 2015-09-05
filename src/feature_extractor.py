@@ -18,13 +18,13 @@ from pcap_parser import *
 # DONE 9. Query diversity stddev
 # DONE 10. Query diversity number of URI component differences
 
-#### QUESTIONABLE
-### 5. Reverse DNS entry IP address ranges
-### 6. Query source-target association (e.g., client/stub-recursive association)
-
 #### Requires more than one PCAP file (into and out of a resolver)
 # 10. Resolution chain length (number of recursive queries)
 # 11. Resolution chain (domains in the chain itself)
+
+#### QUESTIONABLE
+### 5. Reverse DNS entry IP address ranges
+### 6. Query source-target association (e.g., client/stub-recursive association)
 
 #### More sophisticated
 # 12. Monitoring reply from cache (Adv controls in/out links of R and can know if something is served from cache even if the source of the query is anonymised)
@@ -88,8 +88,9 @@ class FeatureFormatter(object):
 class FeatureExtractor(object):
     ''' Base class for all feature extractors.
     '''
-    def __init__(self, queries):
+    def __init__(self, queries, outputQueries = None):
         self.queries = queries
+        self.outputQueries = outputQueries
 
     def getPacketsFromSourceInWindow(self, offset, src, window):
         packetsSent = []
@@ -388,13 +389,20 @@ def join(featureSet):
             index += 1
         return joinedFeatures
 
+class ResolutionChainLengthFeatureExtractor(FeatureExtractor):
+    def __init__(self, inputQueries, outputQueries):
+        FeatureExtractor.__init__(self, inputQueries, outputQueries)
+
+    def extract(self, params = {}):
+        pass
+
 if __name__ == "__main__":
     desc = '''
 Parse a PCAP file and extract a set of features for classification.
 '''
 
     parser = argparse.ArgumentParser(prog='feature_extractor', formatter_class=argparse.RawDescriptionHelpFormatter, description=desc)
-    parser.add_argument('-f', '--file', action="store", required=True, help="Relative path to PCAP file to parse")
+    parser.add_argument('-f', '--file', action="store", required=True, help="Relative path to PCAP file to parse", nargs="+")
     parser.add_argument('--ql', default=False, action="store_true", help="Query length feature")
     parser.add_argument('--qrt', default=False, action="store_true", help="Query resolution time feature")
     parser.add_argument('--qf', action="store", help="Query frequency with parameterized window")
@@ -410,11 +418,13 @@ Parse a PCAP file and extract a set of features for classification.
         parser.print_help()
         sys.exit(-1)
 
-    filename = args.file
-    print >> sys.stderr, "$> Parsing...", filename
+    filenames = args.file
+    print >> sys.stderr, "$> Parsing...", filenames
 
-    parser = PacketParser(filename)
-    dnsPackets = parser.parseDNS(filename)
+    dnsPackets = []
+    for filename in filenames:
+        parser = PacketParser(filename)
+        dnsPackets.append(parser.parseDNS(filename))
 
     # Run each specified extractor over the packets
     featureSet = []
@@ -427,26 +437,31 @@ Parse a PCAP file and extract a set of features for classification.
         # By default, the extractors don't require any parameters
         params = {}
 
+        incomingPackets = dnsPackets[0]
+        outputPackets = None
+        if len(dnsPackets) > 1:
+            outputPackets = dnsPackets[1]
+
         # Instantiate the extractor
         if key == "ql" and val:
-            extractor = QueryLengthFeatureExtractor(dnsPackets)
+            extractor = QueryLengthFeatureExtractor(incomingPackets)
         elif key == "qrt" and val:
-            extractor = QueryResolutionTimeFeatureExtractor(dnsPackets)
+            extractor = QueryResolutionTimeFeatureExtractor(incomingPackets)
         elif key == "qf" and val != None:
-            extractor = QueryFrequencyFeatureExtractor(dnsPackets)
+            extractor = QueryFrequencyFeatureExtractor(incomingPackets)
             params = {"window" : float(val)}
         elif key == "tf" and val != None:
-            extractor = TargetQueryFrequencyFeatureExtractor(dnsPackets)
+            extractor = TargetQueryFrequencyFeatureExtractor(incomingPackets)
             params = {"window" : float(val)}
         elif key == "tn" and val:
-            extractor = TargetNameFeatureExtractor(dnsPackets)
+            extractor = TargetNameFeatureExtractor(incomingPackets)
         elif key == "ta" and val:
-            extractor = TargetAddressFeatureExtractor(dnsPackets)
+            extractor = TargetAddressFeatureExtractor(incomingPackets)
         elif key == "qcd" and val != None:
-            extractor = QueryComponentDifferenceDiversityFeatureExtractor(dnsPackets)
+            extractor = QueryComponentDifferenceDiversityFeatureExtractor(incomingPackets)
             params = {"window" : float(val)}
         elif key == "qce" and val != None:
-            extractor = QueryEntropyDiversityFeatureExtractor(dnsPackets)
+            extractor = QueryEntropyDiversityFeatureExtractor(incomingPackets)
             params = {"window" : float(val)}
 
         # Extract the features and, if not-empty, add them to the running set

@@ -11,7 +11,7 @@ class ResourceRecord(object):
         self.srcAddress = socket.inet_ntoa(ip.src)
         self.dstAddress = socket.inet_ntoa(ip.dst)
         self._unpack()
-        
+
     def _unpack(self):
         self.target = self.rr.name
         self.type = self.rr.type
@@ -70,7 +70,7 @@ class DNSPacket(object):
                 else:
                     for rr in self.dns.an:
                         self.records.append(ResourceRecord(self.ip, rr))
-                return True 
+                return True
             except Exception as e:
                 isDns = False
                 tb = traceback.format_exc()
@@ -93,7 +93,7 @@ class PacketParser(object):
         dnsPackets = []
         index = 0
         for ts, pkt in pcapFile:
-            eth = dpkt.ethernet.Ethernet(pkt) 
+            eth = dpkt.ethernet.Ethernet(pkt)
             packet = DNSPacket(index, eth, ts)
             if packet.isDNS:
                 dnsPackets.append(packet)
