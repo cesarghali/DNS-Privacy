@@ -404,13 +404,13 @@ Parse a PCAP file and extract a set of features for classification.
     parser = argparse.ArgumentParser(prog='feature_extractor', formatter_class=argparse.RawDescriptionHelpFormatter, description=desc)
     parser.add_argument('-f', '--file', action="store", required=True, help="Relative path to PCAP file to parse", nargs="+")
     parser.add_argument('--ql', default=False, action="store_true", help="Query length feature")
-    parser.add_argument('--qrt', default=False, action="store_true", help="Query resolution time feature")
+    parser.add_argument('--qr', default=False, action="store_true", help="Query resolution time feature")
     parser.add_argument('--qf', action="store", help="Query frequency with parameterized window")
     parser.add_argument('--tf', action="store", help="Source target frequency with parameterized window")
     parser.add_argument('--tn', action="store", help="Query target name feature")
     parser.add_argument('--ta', action="store", help="Query target address feature")
-    parser.add_argument('--qcd', default=False, action="store_true", help="Source query (single) component differences feature")
-    parser.add_argument('--qce', default=False, action="store_true", help="Source query entropy feature")
+    parser.add_argument('--qd', action="store", help="Source query (single) component differences feature")
+    parser.add_argument('--qe', action="store", help="Source query entropy feature")
 
     args = parser.parse_args()
 
@@ -443,9 +443,10 @@ Parse a PCAP file and extract a set of features for classification.
             outputPackets = dnsPackets[1]
 
         # Instantiate the extractor
+        extractor = None
         if key == "ql" and val:
             extractor = QueryLengthFeatureExtractor(incomingPackets)
-        elif key == "qrt" and val:
+        elif key == "qr" and val:
             extractor = QueryResolutionTimeFeatureExtractor(incomingPackets)
         elif key == "qf" and val != None:
             extractor = QueryFrequencyFeatureExtractor(incomingPackets)
@@ -457,18 +458,19 @@ Parse a PCAP file and extract a set of features for classification.
             extractor = TargetNameFeatureExtractor(incomingPackets)
         elif key == "ta" and val:
             extractor = TargetAddressFeatureExtractor(incomingPackets)
-        elif key == "qcd" and val != None:
+        elif key == "qd" and val != None:
             extractor = QueryComponentDifferenceDiversityFeatureExtractor(incomingPackets)
             params = {"window" : float(val)}
-        elif key == "qce" and val != None:
+        elif key == "qe" and val != None:
             extractor = QueryEntropyDiversityFeatureExtractor(incomingPackets)
             params = {"window" : float(val)}
 
         # Extract the features and, if not-empty, add them to the running set
-        features, sources = extractor.extract(params)
-        if len(features) > 0:
-            featureSet.append(features)
-            sourceSet.append(features)
+        if extractor:
+            features, sources = extractor.extract(params)
+            if len(features) > 0:
+                featureSet.append(features)
+                sourceSet.append(features)
 
     # Format the feature using CSV (maybe later add more formatting options)
     formatter = FeatureFormatter(join(featureSet))
