@@ -102,7 +102,7 @@ class FeatureExtractor(object):
                 if packet.ts - firstPacket.ts > window:
                     break
             offset += 1
-        return packets, offset
+        return packetsSent, offset
 
     def extract(self, params = {}):
         pass
