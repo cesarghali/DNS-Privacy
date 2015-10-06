@@ -96,7 +96,7 @@ class FeatureExtractor(object):
         packetsSent = []
         firstPacket = self.queries[offset]
         while offset < len(self.queries):
-            packet = self.queries[j]
+            packet = self.queries[offset]
             if packet.query != None and packet.query.srcAddress == src:
                 packetsSent.append(nextPacket.query)
                 if packet.ts - firstPacket.ts > window:
