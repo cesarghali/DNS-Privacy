@@ -72,7 +72,7 @@ class WindowFeatureExtractor(object):
         self.window = window
         self.processingFunction = processingFunction
 
-    def process(self, queries):
+    def process(self, packets):
         return self.processingFunction(queries)
 
 class FeatureFormatter(object):
@@ -88,15 +88,16 @@ class FeatureFormatter(object):
 class FeatureExtractor(object):
     ''' Base class for all feature extractors.
     '''
-    def __init__(self, queries, outputQueries = None):
-        self.queries = queries
-        self.outputQueries = outputQueries
+    def __init__(self, packets, params = {}, outputPackets = None):
+        self.packets = packets
+        self.params = params
+        self.outputPackets = outputPackets
 
     def getPacketsFromSourceInWindow(self, offset, src, window):
         packetsSent = []
-        firstPacket = self.queries[offset]
-        while offset < len(self.queries):
-            packet = self.queries[offset]
+        firstPacket = self.packets[offset]
+        while offset < len(self.packets):
+            packet = self.packets[offset]
             if packet.query != None and packet.query.srcAddress == src:
                 packetsSent.append(packet.query)
                 if packet.ts - firstPacket.ts > window:
@@ -104,27 +105,27 @@ class FeatureExtractor(object):
             offset += 1
         return packetsSent, offset
 
-    def extract(self, params = {}):
+    def extract(self, index, params = {}):
         pass
 
 class TestFeatureExtractor(FeatureExtractor):
     ''' Template for new feature extractors
     '''
-    def __init__(self, queries):
-        FeatureExtractor.__init__(self, queries)
+    def __init__(self, packets, params = {}):
+        FeatureExtractor.__init__(self, packets, params)
 
-    def extract(self, params = {}):
+    def extract(self, index, params = {}):
         features = []
         sources = {}
 
-        for packet in self.queries:
-            pass
+        # for packet in self.packets:
+        #     pass
 
         return features, sources
 
 class WindowedFeatureExtractor(FeatureExtractor):
-    def __init__(self, queries, windowExtractor):
-        FeatureExtractor.__init__(self, queries)
+    def __init__(self, packets, windowExtractor):
+        FeatureExtractor.__init__(self, packets)
         self.extractor = windowExtractor
 
     def extract(self, params = {}):
@@ -134,8 +135,8 @@ class WindowedFeatureExtractor(FeatureExtractor):
         window = self.extractor.window
 
         i = 0
-        while i < len(self.queries):
-            packet = self.queries[i]
+        while i < len(self.packets):
+            packet = self.packets[i]
             offset = i + 1
 
             if packet.query != None:
@@ -154,18 +155,18 @@ class WindowedFeatureExtractor(FeatureExtractor):
         return features
 
 class QueryComponentDifferenceDiversityFeatureExtractor(FeatureExtractor):
-    def __init__(self, queries):
-        FeatureExtractor.__init__(self, queries)
+    def __init__(self, packets, params = {}):
+        FeatureExtractor.__init__(self, packets, params)
 
-    def extract(self, params = {"window" : 0.05}):
+    def extract(self, index, params = {"window" : 0.05}):
         features = []
         sources = {}
 
         window = params["window"]
 
         i = 0
-        while i < len(self.queries):
-            packet = self.queries[i]
+        while i < len(self.packets):
+            packet = self.packets[i]
             offset = i + 1
 
             if packet.query != None:
@@ -182,26 +183,26 @@ class QueryComponentDifferenceDiversityFeatureExtractor(FeatureExtractor):
         return features, sources
 
 class QueryEntropyDiversityFeatureExtractor(FeatureExtractor):
-    ''' Template for new feature extractors
-    '''
-    def __init__(self, queries):
-        FeatureExtractor.__init__(self, queries)
+    def __init__(self, packets, params = {}):
+        FeatureExtractor.__init__(self, packets, params)
 
-    def extract(self, prams = {"window" : 0.05}):
+    def extract(self, index, prams = {"window" : 0.05}):
         features = []
         sources = {}
 
         window = params["window"]
 
         i = 0
-        while i < len(self.queries):
-            packet = self.queries[i]
+        while i < len(self.packets):
+            packet = self.packets[i]
             offset = i + 1
 
             if packet.query != None:
                 src = packet.query.srcAddress
                 packetsSent, offset = self.getPacketsFromSourceInWindow(offset, src, window)
+
                 entropy = computeQueryEntropy(packetsSent)
+
                 if src not in sources:
                     sources[src] = len(sources)
                 feature = (sources[src], entropy)
@@ -212,18 +213,18 @@ class QueryEntropyDiversityFeatureExtractor(FeatureExtractor):
         return features, sources
 
 class TargetQueryFrequencyFeatureExtractor(FeatureExtractor):
-    def __init__(self, queries):
-        FeatureExtractor.__init__(self, queries)
+    def __init__(self, packets, params = {}):
+        FeatureExtractor.__init__(self, packets, params)
 
-    def extract(self, params = {"window" : 0.05}):
+    def extract(self, index, params = {"window" : 0.05}):
         sources = {}
         features = []
 
         window = params["window"]
 
         i = 0
-        while i < len(self.queries):
-            packet = self.queries[i]
+        while i < len(self.packets):
+            packet = self.packets[i]
             offset = i + 1
 
             if packet.query != None:
@@ -247,24 +248,26 @@ class TargetQueryFrequencyFeatureExtractor(FeatureExtractor):
         return features, sources
 
 class QueryFrequencyFeatureExtractor(FeatureExtractor):
-    def __init__(self, queries):
-        FeatureExtractor.__init__(self, queries)
+    def __init__(self, packets, params = {}):
+        FeatureExtractor.__init__(self, packets, params)
 
-    def extract(self, params = {"window" : 0.05}):
+    def extract(self, index, params = {"window" : 0.05}):
         features = []
         sources = {}
 
         window = params["window"]
 
         i = 0
-        while i < len(self.queries):
-            packet = self.queries[i]
+        while i < len(self.packets):
+            packet = self.packets[i]
             offset = i + 1
 
             if packet.query != None:
                 src = packet.query.srcAddress
                 packetsSent, offset = self.getPacketsFromSourceInWindow(offset, src, window)
+
                 frequency = computeQueryFrequency(packetsSent, window)
+
                 if src not in sources:
                     sources[src] = len(sources)
                 feature = (sources[src], frequency)
@@ -274,14 +277,14 @@ class QueryFrequencyFeatureExtractor(FeatureExtractor):
         return features, sources
 
 class TargetAddressFeatureExtractor(FeatureExtractor):
-    def __init__(self, queries):
-        FeatureExtractor.__init__(self, queries)
+    def __init__(self, packets, params = {}):
+        FeatureExtractor.__init__(self, packets, params)
 
-    def extract(self, params = {}):
+    def extract(self, index, params = {}):
         features = []
         sources = {}
 
-        for packet in self.queries:
+        for packet in self.packets:
             for record in packet.records:
                 src = record.srcAddress
                 if record.targetAddress != None:
@@ -296,14 +299,14 @@ class TargetAddressFeatureExtractor(FeatureExtractor):
         return features, sources
 
 class TargetNameFeatureExtractor(FeatureExtractor):
-    def __init__(self, queries):
-        FeatureExtractor.__init__(self, queries)
+    def __init__(self, packets, params = {}):
+        FeatureExtractor.__init__(self, packets, params)
 
-    def extract(self, params = {}):
+    def extract(self, index, params = {}):
         features = []
         sources = {}
 
-        for packet in self.queries:
+        for packet in self.packets:
             if packet.query != None:
                 src = packet.query.srcAddress
                 target = packet.query.name
@@ -316,50 +319,53 @@ class TargetNameFeatureExtractor(FeatureExtractor):
         return features, sources
 
 class QueryResolutionTimeFeatureExtractor(FeatureExtractor):
-    def __init__(self, queries):
-        FeatureExtractor.__init__(self, queries)
+    def __init__(self, packets, params = {}):
+        FeatureExtractor.__init__(self, packets, params)
 
-    def extract(self, params = {}):
+    def extract(self, index):
         features = []
         sources = {}
 
-        for packet in self.queries:
+        packet = self.packets[index]
 
-            # Match queries to responses, so only start searching from queries
-            if packet.query != None:
-                src = packet.query.srcAddress
-                target = packet.query.name
-                for response in self.queries:
-                    if len(response.records) > 0 and response.records[0].target == target:
-                        match = response.records[0]
-                        delta = response.ts - packet.ts
-                        if delta > 0:
-                            if src not in sources:
-                                sources[src] = len(sources)
-                            feature = (sources[src], delta)
+        # Match queries to responses, so only start searching from queries
+        if packet.query != None:
+            src = packet.query.srcAddress
+            target = packet.query.name
+            for response in self.packets[index:]:
+                if len(response.records) > 0 and response.records[0].target == target:
+                    match = response.records[0]
+                    delta = response.ts - packet.ts
+                    if delta > 0:
+                        if src not in sources:
+                            sources[src] = len(sources)
+                        feature = (sources[src], delta)
 
-                            features.append(feature)
+                        features.append(feature)
 
         return features, sources
 
 class QueryLengthFeatureExtractor(FeatureExtractor):
-    def __init__(self, queries):
-        FeatureExtractor.__init__(self, queries)
+    def __init__(self, packets, params = {}):
+        FeatureExtractor.__init__(self, packets, params)
 
-    def extract(self, params = {}):
+    def extract(self, index):
         sources = {}
         features = []
 
-        for packet in self.queries:
-            src = None
+        packet = self.packets[index]
+        if packet.query != None:
+            src = packet.query.srcAddress
+            queryLength = len(packet.query.name)
 
-            queryLength = -1
-            if packet.query != None:
-                src = packet.query.srcAddress
-                queryLength = len(packet.query.name)
-            if len(packet.records) > 0:
-                src = packet.records[0].dstAddress
-                queryLength = len(packet.records[0].target)
+            if src not in sources:
+                sources[src] = len(sources)
+            feature = (sources[src], queryLength)
+
+            features.append(feature)
+        if len(packet.records) > 0:
+            src = packet.records[0].dstAddress
+            queryLength = len(packet.records[0].target)
 
             if src not in sources:
                 sources[src] = len(sources)
@@ -377,6 +383,8 @@ def join(featureSet):
         joinedFeatures = []
         for features in featureSet:
 
+            # features = list of tuples == [(0,19),(0,19),...]
+
             for feature in features:
                 entry = [feature[0]] # feature[0] is always the source -- could be wrapped up in a class
                 for i in range(index):
@@ -389,6 +397,7 @@ def join(featureSet):
             index += 1
         return joinedFeatures
 
+# TODO: not finished since we don't have data to even test it.
 class ResolutionChainLengthFeatureExtractor(FeatureExtractor):
     def __init__(self, inputQueries, outputQueries):
         FeatureExtractor.__init__(self, inputQueries, outputQueries)
@@ -424,56 +433,91 @@ Parse a PCAP file and extract a set of features for classification.
     dnsPackets = []
     for filename in filenames:
         parser = PacketParser(filename)
-        dnsPackets.append(parser.parseDNS(filename))
+        packets = parser.parseDNS(filename)
+        for packet in packets:
+            dnsPackets.append(packet)
 
-    # Run each specified extractor over the packets
-    featureSet = []
-    sourceSet = []
+    # Initialize the extractors
+    extractors = []
     for key in vars(args):
         val = vars(args)[key]
-        features = []
-        sources = []
 
-        # By default, the extractors don't require any parameters
-        params = {}
-
-        incomingPackets = dnsPackets[0]
-        outputPackets = None
-        if len(dnsPackets) > 1:
-            outputPackets = dnsPackets[1]
-
-        # Instantiate the extractor
-        extractor = None
         if key == "ql" and val:
-            extractor = QueryLengthFeatureExtractor(incomingPackets)
+            extractors.append(QueryLengthFeatureExtractor(dnsPackets))
         elif key == "qr" and val:
-            extractor = QueryResolutionTimeFeatureExtractor(incomingPackets)
+            extractors.append(QueryResolutionTimeFeatureExtractor(dnsPackets))
         elif key == "qf" and val != None:
-            extractor = QueryFrequencyFeatureExtractor(incomingPackets)
-            params = {"window" : float(val)}
+            extractors.append(QueryFrequencyFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
         elif key == "tf" and val != None:
-            extractor = TargetQueryFrequencyFeatureExtractor(incomingPackets)
-            params = {"window" : float(val)}
+            extractors.append(TargetQueryFrequencyFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
         elif key == "tn" and val:
-            extractor = TargetNameFeatureExtractor(incomingPackets)
+            extractors.append(TargetNameFeatureExtractor(dnsPackets))
         elif key == "ta" and val:
-            extractor = TargetAddressFeatureExtractor(incomingPackets)
+            extractors.append(TargetAddressFeatureExtractor(dnsPackets))
         elif key == "qd" and val != None:
-            extractor = QueryComponentDifferenceDiversityFeatureExtractor(incomingPackets)
-            params = {"window" : float(val)}
+            extractors.append(QueryComponentDifferenceDiversityFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
         elif key == "qe" and val != None:
-            extractor = QueryEntropyDiversityFeatureExtractor(incomingPackets)
-            params = {"window" : float(val)}
+            extractors.append(QueryEntropyDiversityFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
 
-        # Extract the features and, if not-empty, add them to the running set
-        if extractor:
-            features, sources = extractor.extract(params)
-            if len(features) > 0:
-                featureSet.append(features)
-                sourceSet.append(features)
+    # Extract the features and, if not-empty, add them to the running set
+    featureSet = []
+    sourceSet = {}
+    for index, packet in enumerate(dnsPackets):
+        sources = set()
+        features = {}
+
+        for eindex, extractor in enumerate(extractors):
+            # Extract one feature set from the chain starting at the current packet
+            single_features, single_sources = extractor.extract(index)
+
+            if eindex not in features:
+                features[eindex] = []
+
+            # Add new sources to the main source list, if needed
+            for source in single_sources:
+                if source not in sourceSet:
+                    sourceSet[source] = len(sourceSet)
+
+            # Re-build feature entries and add them to a list
+            for feature in single_features:
+                sourceId = feature[0]
+                value = feature[1]
+                for source in single_sources:
+                    if single_sources[source] == sourceId:
+                        adjustedSourceId = sourceSet[source]
+                        features[eindex].append([adjustedSourceId, value])
+
+        # Merge each feature entry tuple
+        merged_feature = []
+        print index
+        for feature_index in features:
+            print features[feature_index]
+            for value_tuple in features[feature_index]:
+                merged_feature.append(value_tuple[1])
+                break
+
+        featureSet.append(merged_feature)
+
+    print featureSet
+    sys.exit(1)
+
+        # if len(featureSet) > 0:
+            # print sources
+            # print features
+            # sys.exit(1)
+
+    # Extract the features and, if not-empty, add them to the running set
+    # if extractor:
+    #     features, sources = extractor.extract(params)
+    #     if len(features) > 0:
+    #         featureSet.append(features)
+    #         sourceSet.append(sources)
+    #
+    #         print featureSet
+    #         print sources
 
     # Format the feature using CSV (maybe later add more formatting options)
-    formatter = FeatureFormatter(join(featureSet))
+    formatter = FeatureFormatter(featureSet)
     formatter.toCSV(sys.stdout)
 
-    print >> sys.stderr, "$> Done. Parsed %d DNS packets" % len(dnsPackets)
+    print >> sys.stderr, "$> Done. Parsed %d individual DNS packet(s)" % len(dnsPackets)
