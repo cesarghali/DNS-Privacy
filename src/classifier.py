@@ -2,6 +2,7 @@ import sys, getopt
 import math
 import time
 import datetime
+import numpy as np
 from random import shuffle
 from sklearn.linear_model import SGDClassifier
 from sklearn.tree import DecisionTreeClassifier
@@ -117,7 +118,7 @@ def usage():
    print >> sys.stderr, "arguments:"
    print >> sys.stderr, "  -h, --help                                 show this help message and exit"
    print >> sys.stderr, "  -i FILE, --ifile FILE                      relative path to csv containing: first column is target and rest are features"
-   print >> sys.stderr, "  -p PERCENTAGE, --percentage PERCENTAGE     the percentage of input data to be treated as test data"
+   print >> sys.stderr, "  -p PERCENTAGE, --percentage PERCENTAGE     the percentage of input data to be treated as test data, range [0, 1]"
    print >> sys.stderr, "  -c CLASSIFIERS, --classifiers CLASSIFIERS  comma seperated list of one or more classifiers to use in prediction"
    print >> sys.stderr, "                                             Options are: sgd, tree, svm, logistic"
    print >> sys.stderr, "  -t ITERATIONS, --iterations ITERATIONS     number of classification iterations"
@@ -182,6 +183,7 @@ def main(argv):
 
    print >> sys.stderr, "Reading input file..."
    data = readInput(fileName)
+   numberOfUsers = np.amax([map(float, column[1:]) for column in data][0:len(data)])
    errorRate = 0.0
    startTime = time.time()
    for i in range(0, iterations):
@@ -202,7 +204,7 @@ def main(argv):
             print >> sys.stderr, "running Logistic Regression...",
             testTargetPredicted.append(logistic(trainingFeatures, trainingTarget, testFeatures, testTarget, options))
          else:
-            print >> sys.stderr, olor.RED + "Unknown classifier" + color.END
+            print >> sys.stderr, color.RED + "Unknown classifier" + color.END
             usage()
             sys.exit(2)
 
@@ -214,11 +216,13 @@ def main(argv):
    print >> sys.stderr, ""
    print >> sys.stderr, "Execution time: " + str(datetime.timedelta(seconds=(endTime - startTime)))
    print >> sys.stderr, "Error rate: " + str(errorRate / iterations)
+   print >> sys.stderr, "Number of users: " + str(numberOfUsers)
    print >> sys.stdout, fileName + "\t" +\
       classifiers + "\t" +\
       options + "\t" +\
       str(datetime.timedelta(seconds=(endTime - startTime))) + "\t" +\
-      str(errorRate / iterations)
+      str(errorRate / iterations) + "\t" +\
+      str(numberOfUsers)
 
 
 if __name__ == "__main__":
