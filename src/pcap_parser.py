@@ -56,7 +56,7 @@ class DNSPacket(object):
             return False # DNS runs on top of IP
 
         self.ip = self.ethernetPacket.data
-        if self.ip.p == dpkt.ip.IP_PROTO_UDP: # DNS runs over UDP
+        if self.ip.p == dpkt.ip.IP_PROTO_UDP: # DNS runs over UDP currently
             self.udp = self.ip.data
 
             tb = None
@@ -81,7 +81,6 @@ class DNSPacket(object):
                     print tb
         else:
             return False
-
 
 class PacketParser(object):
     def __init__(self, filename):
