@@ -67,9 +67,13 @@ class DNSPacket(object):
                 # QR = 1, response
                 if self.dns.qr == 0:
                     self.query = Query(self.ip, self.dns, self.dns.qd[0])
+                    self.src = self.query.srcAddress
+                    self.dst = self.query.dstAddress
                 else:
                     for rr in self.dns.an:
                         self.records.append(ResourceRecord(self.ip, rr))
+                    self.src = self.records[0].srcAddress
+                    self.dst = self.records[0].dstAddress
                 return True
             except Exception as e:
                 isDns = False

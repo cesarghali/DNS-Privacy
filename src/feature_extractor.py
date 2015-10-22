@@ -486,35 +486,26 @@ Parse a PCAP file and extract a set of features for classification.
                     if single_sources[source] == sourceId:
                         adjustedSourceId = sourceSet[source]
                         features[eindex].append([adjustedSourceId, value])
+            else:
+                source = packet.src
+                if source not in sourceSet:
+                    sourceSet[source] = len(sourceSet)
+                adjustedSourceId = sourceSet[source]
+                features[eindex].append([adjustedSourceId, 0]) # null feature...
 
         # Merge each feature entry tuple
-        merged_feature = []
+        merged_feature = [packet.src]
         print index
         for feature_index in features:
             print features[feature_index]
             for value_tuple in features[feature_index]:
                 merged_feature.append(value_tuple[1])
-                break
+                break # only use the first feature
 
         featureSet.append(merged_feature)
 
     print featureSet
     sys.exit(1)
-
-        # if len(featureSet) > 0:
-            # print sources
-            # print features
-            # sys.exit(1)
-
-    # Extract the features and, if not-empty, add them to the running set
-    # if extractor:
-    #     features, sources = extractor.extract(params)
-    #     if len(features) > 0:
-    #         featureSet.append(features)
-    #         sourceSet.append(sources)
-    #
-    #         print featureSet
-    #         print sources
 
     # Format the feature using CSV (maybe later add more formatting options)
     formatter = FeatureFormatter(featureSet)
