@@ -504,9 +504,6 @@ Parse a PCAP file and extract a set of features for classification.
 
         featureSet.append(merged_feature)
 
-    print featureSet
-    sys.exit(1)
-
     # Format the feature using CSV (maybe later add more formatting options)
     formatter = FeatureFormatter(featureSet)
     formatter.toCSV(sys.stdout)
