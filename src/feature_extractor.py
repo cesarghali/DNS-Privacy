@@ -257,7 +257,7 @@ class QueryFrequencyFeatureExtractor(FeatureExtractor):
 
         window = params["window"]
 
-        i = 0
+        i = index
         while i < len(self.packets):
             packet = self.packets[i]
             offset = i + 1
@@ -272,8 +272,8 @@ class QueryFrequencyFeatureExtractor(FeatureExtractor):
                     sources[src] = len(sources)
                 feature = (sources[src], frequency)
                 features.append(feature)
+                return features
 
-            i = offset
         return features, sources
 
 class TargetAddressFeatureExtractor(FeatureExtractor):
@@ -322,7 +322,7 @@ class QueryResolutionTimeFeatureExtractor(FeatureExtractor):
     def __init__(self, packets, params = {}):
         FeatureExtractor.__init__(self, packets, params)
 
-    def extract(self, index):
+    def extract(self, index, params = {}):
         features = []
         sources = {}
 
