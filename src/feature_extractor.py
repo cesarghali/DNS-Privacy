@@ -463,6 +463,9 @@ Parse a PCAP file and extract a set of features for classification.
     featureSet = []
     sourceSet = {}
     for index, packet in enumerate(dnsPackets):
+        if isinstance(packet, ResourceRecord):
+            continue
+
         sources = set()
         features = {}
 
@@ -495,9 +498,7 @@ Parse a PCAP file and extract a set of features for classification.
 
         # Merge each feature entry tuple
         merged_feature = [packet.src]
-        print index
         for feature_index in features:
-            print features[feature_index]
             for value_tuple in features[feature_index]:
                 merged_feature.append(value_tuple[1])
                 break # only use the first feature
