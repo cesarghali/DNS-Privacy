@@ -11,7 +11,6 @@ from pcap_parser import *
 # DONE 2. Relative source query frequency
 # DONE 3. Relative target query frequency
 # DONE 4. Query resolution length (time)
-# REMOVED -- not needed 7. Query source identity (address)
 # DONE 8. Query target address
 # ADDED: Query target name (different from above since a name could map to different addresses)
 # DONE 7. Query diversity entropy
@@ -21,13 +20,6 @@ from pcap_parser import *
 #### Requires more than one PCAP file (into and out of a resolver)
 # 10. Resolution chain length (number of recursive queries)
 # 11. Resolution chain (domains in the chain itself)
-
-#### QUESTIONABLE
-### 5. Reverse DNS entry IP address ranges
-### 6. Query source-target association (e.g., client/stub-recursive association)
-
-#### More sophisticated
-# 12. Monitoring reply from cache (Adv controls in/out links of R and can know if something is served from cache even if the source of the query is anonymised)
 
 def computeComponentDifferences(list1, list2):
     return 0
@@ -128,14 +120,14 @@ class WindowedFeatureExtractor(FeatureExtractor):
         FeatureExtractor.__init__(self, packets)
         self.extractor = windowExtractor
 
-    def extract(self, params = {}):
+    def extract(self, index):
         features = []
         sources = {}
 
         window = self.extractor.window
 
-        i = 0
-        while i < len(self.packets):
+        i = index
+        while i < len(self.packets) - 1:
             packet = self.packets[i]
             offset = i + 1
 
@@ -148,6 +140,8 @@ class WindowedFeatureExtractor(FeatureExtractor):
                 feature = (sources[src], featureValue)
                 features.append(feature)
 
+                return features, sources
+
             i = offset
 
         return features, sources
@@ -158,14 +152,14 @@ class QueryComponentDifferenceDiversityFeatureExtractor(FeatureExtractor):
     def __init__(self, packets, params = {}):
         FeatureExtractor.__init__(self, packets, params)
 
-    def extract(self, index, params = {"window" : 0.05}):
+    def extract(self, index):
         features = []
         sources = {}
 
-        window = params["window"]
+        window = self.params["window"]
 
-        i = 0
-        while i < len(self.packets):
+        i = index
+        while i < len(self.packets) - 1:
             packet = self.packets[i]
             offset = i + 1
 
@@ -178,6 +172,8 @@ class QueryComponentDifferenceDiversityFeatureExtractor(FeatureExtractor):
                 feature = (sources[src], differences)
                 features.append(feature)
 
+                return features, sources
+
             i = offset
 
         return features, sources
@@ -186,14 +182,14 @@ class QueryEntropyDiversityFeatureExtractor(FeatureExtractor):
     def __init__(self, packets, params = {}):
         FeatureExtractor.__init__(self, packets, params)
 
-    def extract(self, index, prams = {"window" : 0.05}):
+    def extract(self, index):
         features = []
         sources = {}
 
-        window = params["window"]
+        window = self.params["window"]
 
-        i = 0
-        while i < len(self.packets):
+        i = index
+        while i < len(self.packets) - 1:
             packet = self.packets[i]
             offset = i + 1
 
@@ -208,6 +204,8 @@ class QueryEntropyDiversityFeatureExtractor(FeatureExtractor):
                 feature = (sources[src], entropy)
                 features.append(feature)
 
+                return features, sources
+
             i = offset
 
         return features, sources
@@ -216,14 +214,14 @@ class TargetQueryFrequencyFeatureExtractor(FeatureExtractor):
     def __init__(self, packets, params = {}):
         FeatureExtractor.__init__(self, packets, params)
 
-    def extract(self, index, params = {"window" : 0.05}):
+    def extract(self, index):
         sources = {}
         features = []
 
-        window = params["window"]
+        window = self.params["window"]
 
-        i = 0
-        while i < len(self.packets):
+        i = index
+        while i < len(self.packets) - 1:
             packet = self.packets[i]
             offset = i + 1
 
@@ -235,6 +233,8 @@ class TargetQueryFrequencyFeatureExtractor(FeatureExtractor):
                     sources[src] = len(sources)
                 feature = (sources[src], frequency)
                 features.append(feature)
+
+                return features, sources
 
                 # Since we're concerned with target frequency, the window only
                 # moves forward when the target query changes
@@ -251,14 +251,14 @@ class QueryFrequencyFeatureExtractor(FeatureExtractor):
     def __init__(self, packets, params = {}):
         FeatureExtractor.__init__(self, packets, params)
 
-    def extract(self, index, params = {"window" : 0.05}):
+    def extract(self, index):
         features = []
         sources = {}
 
-        window = params["window"]
+        window = self.params["window"]
 
         i = index
-        while i < len(self.packets):
+        while i < len(self.packets) - 1:
             packet = self.packets[i]
             offset = i + 1
 
@@ -272,7 +272,10 @@ class QueryFrequencyFeatureExtractor(FeatureExtractor):
                     sources[src] = len(sources)
                 feature = (sources[src], frequency)
                 features.append(feature)
-                return features
+
+                return features, sources
+
+            i = offset
 
         return features, sources
 
@@ -280,7 +283,7 @@ class TargetAddressFeatureExtractor(FeatureExtractor):
     def __init__(self, packets, params = {}):
         FeatureExtractor.__init__(self, packets, params)
 
-    def extract(self, index, params = {}):
+    def extract(self, index):
         features = []
         sources = {}
 
@@ -302,7 +305,7 @@ class TargetNameFeatureExtractor(FeatureExtractor):
     def __init__(self, packets, params = {}):
         FeatureExtractor.__init__(self, packets, params)
 
-    def extract(self, index, params = {}):
+    def extract(self, index):
         features = []
         sources = {}
 
@@ -414,9 +417,9 @@ Parse a PCAP file and extract a set of features for classification.
     parser.add_argument('-f', '--file', action="store", required=True, help="Relative path to PCAP file to parse", nargs="+")
     parser.add_argument('--ql', default=False, action="store_true", help="Query length feature")
     parser.add_argument('--qr', default=False, action="store_true", help="Query resolution time feature")
+    parser.add_argument('--tn', default=False, action="store_true", help="Query target name feature")
     parser.add_argument('--qf', action="store", help="Query frequency with parameterized window")
     parser.add_argument('--tf', action="store", help="Source target frequency with parameterized window")
-    parser.add_argument('--tn', action="store", help="Query target name feature")
     parser.add_argument('--ta', action="store", help="Query target address feature")
     parser.add_argument('--qd', action="store", help="Source query (single) component differences feature")
     parser.add_argument('--qe', action="store", help="Source query entropy feature")
