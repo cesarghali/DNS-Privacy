@@ -31,6 +31,8 @@ def readInput(fileName):
             rows.append(chunks)
    return rows
 
+def get_classifiers():
+    return "sgd,tree,svm,logistic"
 
 def processInput(data, testPercentage):
    shuffle(data)

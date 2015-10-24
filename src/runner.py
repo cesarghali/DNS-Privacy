@@ -10,7 +10,7 @@ from pcap_parser import *
 from feature_extractor import *
 from classifier import *
 
-def build_extractors(dnsPackets):
+def build_extractors(dnsPackets, windows = [0.5, 1, 5, 10]):
     extractors = []
 
     extractors.append(QueryLengthFeatureExtractor(dnsPackets))
@@ -18,10 +18,12 @@ def build_extractors(dnsPackets):
     extractors.append(TargetNameFeatureExtractor(dnsPackets))
     extractors.append(TargetAddressFeatureExtractor(dnsPackets))
 
-    extractors.append(QueryComponentDifferenceDiversityFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
-    extractors.append(QueryEntropyDiversityFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
-    extractors.append(QueryFrequencyFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
-    extractors.append(TargetQueryFrequencyFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
+    # Initialize the dynamic ones with a bunch of different window values
+    for window in windows:
+        extractors.append(QueryComponentDifferenceDiversityFeatureExtractor(dnsPackets, params = {"window" : float(window)}))
+        extractors.append(QueryEntropyDiversityFeatureExtractor(dnsPackets, params = {"window" : float(window)}))
+        extractors.append(QueryFrequencyFeatureExtractor(dnsPackets, params = {"window" : float(window)}))
+        extractors.append(TargetQueryFrequencyFeatureExtractor(dnsPackets, params = {"window" : float(window)}))
 
     return extractors
 
@@ -31,8 +33,7 @@ def run_classifiers(data):
     options = ""
 
     numberOfUsers = np.amax([map(float, column[1:]) for column in data][0:len(data)])
-
-    classifiers = "sgd, tree, svm, logistic".split(",")
+    classifiers = get_classifiers().split(",")
 
     for num_of_classifiers in range(1, len(classifiers) + 1):
         for subset in itertools.combinations(classifiers, num_of_classifiers):
