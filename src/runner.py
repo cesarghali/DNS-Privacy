@@ -24,6 +24,10 @@ def build_extractors(dnsPackets):
 
     return extractors
 
+def run_classifiers(features):
+    
+    # sgd, tree, svm, logistic
+
 def main(args):
     filenames = args.file
     dnsPackets = []
@@ -36,15 +40,15 @@ def main(args):
     extractors = build_extractors(dnsPackets)
     for num_of_extractors in range(1, len(extractors) + 1):
         for subset in itertools.combinations(extractors, num_of_extractors):
-            output = extract(dnsPackets, subset)
+            features = extract(dnsPackets, subset)
             # TODO: send output to a file...
 
 if __name__ == "__main__":
     desc = '''
 Parse a PCAP file and extract a set of features for classification.
 '''
-
     parser = argparse.ArgumentParser(prog='feature_extractor', formatter_class=argparse.RawDescriptionHelpFormatter, description=desc)
-    parser.add_argument('-f', '--file', action="store", required=True, help="Relative path to PCAP file to parse", nargs="+")
+    parser.add_argument('-f', '--file', action="store", required=True, help="Relative path to PCAP file(s) to parse", nargs="+")
 
     args = parser.parse_args()
+    main(args)

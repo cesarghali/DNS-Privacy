@@ -22,7 +22,6 @@ class color:
    UNDERLINE = '\033[4m'
    END = '\033[0m'
 
-
 def readInput(fileName):
    rows = []
    with open(fileName, "r") as csvfile:
@@ -103,12 +102,52 @@ def error(testTarget, testTargetPredicted):
       for j in range(0, len(testTargetPredicted)):
          # testTargetPredicted: rows and columns are swapped
          tmp.append(testTargetPredicted[j][i])
-         
+
       if (max(set(tmp), key=tmp.count) != testTarget[i]):
          count = count + 1
 
    return ((1.0 * count) / len(testTarget))
 
+def run(testPercentage, classifiers, iterations, filename, options):
+   print >> sys.stderr, "Input file: " + fileName
+   print >> sys.stderr, "Classifiers: " + classifiers
+   print >> sys.stderr, "Options: " + options
+   print >> sys.stderr, ""
+
+   print >> sys.stderr, "Reading input file..."
+
+   data = readInput(fileName)
+   numberOfUsers = np.amax([map(float, column[1:]) for column in data][0:len(data)])
+   errorRate = 0.0
+   startTime = time.time()
+   for i in range(0, iterations):
+      print >> sys.stderr, "\rIteration " + str(i + 1) + ":",
+      trainingFeatures, trainingTarget, testFeatures, testTarget = processInput(data, testPercentage)
+      testTargetPredicted = []
+      for cls in classifiers.split(","):
+         if cls == "sgd":
+            print >> sys.stderr, "running SGD...",
+            testTargetPredicted.append(sgd(trainingFeatures, trainingTarget, testFeatures, testTarget, options))
+         elif cls == "tree":
+            print >> sys.stderr, "running Decision Tree...",
+            testTargetPredicted.append(tree(trainingFeatures, trainingTarget, testFeatures, testTarget))
+         elif cls == "svm":
+            print >> sys.stderr, "running SVM...",
+            testTargetPredicted.append(svm(trainingFeatures, trainingTarget, testFeatures, testTarget))
+         elif cls == "logistic":
+            print >> sys.stderr, "running Logistic Regression...",
+            testTargetPredicted.append(logistic(trainingFeatures, trainingTarget, testFeatures, testTarget, options))
+         else:
+            print >> sys.stderr, color.RED + "Unknown classifier" + color.END
+            usage()
+            sys.exit(2)
+
+      print >> sys.stderr, "calculating error...",
+      errorRate = errorRate + error(testTarget, testTargetPredicted)
+
+   endTime = time.time()
+
+   return numberOfUsers, errorRate, startTime, endTime
 
 def usage():
    print >> sys.stderr, "usage: classifier -i FILE [-p PERCENTAGE] -c CLASSIFIERS [-t ITERATIONS] [-o OPTIONS]"
@@ -128,7 +167,6 @@ def usage():
    print >> sys.stderr, "                                               " + color.UNDERLINE + "tree:" + color.END + " none"
    print >> sys.stderr, "                                               " + color.UNDERLINE + "svm:" + color.END + " none"
    print >> sys.stderr, "                                               " + color.UNDERLINE + "logistic:" + color.END + " [regularization=FLOAT]"
-
 
 def main(argv):
    fileName = ""
@@ -176,42 +214,7 @@ def main(argv):
       usage()
       sys.exit(2)
 
-   print >> sys.stderr, "Input file: " + fileName
-   print >> sys.stderr, "Classifiers: " + classifiers
-   print >> sys.stderr, "Options: " + options
-   print >> sys.stderr, ""
-
-   print >> sys.stderr, "Reading input file..."
-   data = readInput(fileName)
-   numberOfUsers = np.amax([map(float, column[1:]) for column in data][0:len(data)])
-   errorRate = 0.0
-   startTime = time.time()
-   for i in range(0, iterations):
-      print >> sys.stderr, "\rIteration " + str(i + 1) + ":",
-      trainingFeatures, trainingTarget, testFeatures, testTarget = processInput(data, testPercentage)
-      testTargetPredicted = []
-      for cls in classifiers.split(","):
-         if cls == "sgd":
-            print >> sys.stderr, "running SGD...",
-            testTargetPredicted.append(sgd(trainingFeatures, trainingTarget, testFeatures, testTarget, options))
-         elif cls == "tree":
-            print >> sys.stderr, "running Decision Tree...",
-            testTargetPredicted.append(tree(trainingFeatures, trainingTarget, testFeatures, testTarget))
-         elif cls == "svm":
-            print >> sys.stderr, "running SVM...",
-            testTargetPredicted.append(svm(trainingFeatures, trainingTarget, testFeatures, testTarget))
-         elif cls == "logistic":
-            print >> sys.stderr, "running Logistic Regression...",
-            testTargetPredicted.append(logistic(trainingFeatures, trainingTarget, testFeatures, testTarget, options))
-         else:
-            print >> sys.stderr, color.RED + "Unknown classifier" + color.END
-            usage()
-            sys.exit(2)
-
-      print >> sys.stderr, "calculating error...",
-      errorRate = errorRate + error(testTarget, testTargetPredicted)
-
-   endTime = time.time()
+   numberOfUsers, errorRate, startTime, endTime = run(testPercentage, classifiers, iterations, filename, options)
 
    print >> sys.stderr, ""
    print >> sys.stderr, "Execution time: " + str(datetime.timedelta(seconds=(endTime - startTime)))
@@ -227,4 +230,3 @@ def main(argv):
 
 if __name__ == "__main__":
    main(sys.argv[1:])
-
