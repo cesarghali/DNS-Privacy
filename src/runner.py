@@ -15,18 +15,40 @@ def build_extractors(dnsPackets):
 
     extractors.append(QueryLengthFeatureExtractor(dnsPackets))
     extractors.append(QueryResolutionTimeFeatureExtractor(dnsPackets))
-    extractors.append(QueryFrequencyFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
-    extractors.append(TargetQueryFrequencyFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
     extractors.append(TargetNameFeatureExtractor(dnsPackets))
     extractors.append(TargetAddressFeatureExtractor(dnsPackets))
+
     extractors.append(QueryComponentDifferenceDiversityFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
     extractors.append(QueryEntropyDiversityFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
+    extractors.append(QueryFrequencyFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
+    extractors.append(TargetQueryFrequencyFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
 
     return extractors
 
-def run_classifiers(features):
-    
-    # sgd, tree, svm, logistic
+def run_classifiers(data):
+    testPercentage = 0.1
+    iterations = 1000
+    options = ""
+
+    numberOfUsers = np.amax([map(float, column[1:]) for column in data][0:len(data)])
+
+    classifiers = "sgd, tree, svm, logistic".split(",")
+
+    for num_of_classifiers in range(1, len(classifiers) + 1):
+        for subset in itertools.combinations(classifiers, num_of_classifiers):
+            classifier_subset = ",".join(subset)
+            errorRate, startTime, endTime = run(data, numberOfUsers, testPercentage, classifier_subset, iterations, options)
+
+            print >> sys.stderr, ""
+            print >> sys.stderr, "Execution time: " + str(datetime.timedelta(seconds=(endTime - startTime)))
+            print >> sys.stderr, "Error rate: " + str(errorRate / iterations)
+            print >> sys.stderr, "Number of users: " + str(numberOfUsers)
+            print >> sys.stdout, fileName + "\t" +\
+                classifier_subset + "\t" +\
+                options + "\t" +\
+                str(datetime.timedelta(seconds=(endTime - startTime))) + "\t" +\
+                str(errorRate / iterations) + "\t" +\
+                str(numberOfUsers)
 
 def main(args):
     filenames = args.file
@@ -41,7 +63,7 @@ def main(args):
     for num_of_extractors in range(1, len(extractors) + 1):
         for subset in itertools.combinations(extractors, num_of_extractors):
             features = extract(dnsPackets, subset)
-            # TODO: send output to a file...
+            run_classifiers(features)
 
 if __name__ == "__main__":
     desc = '''

@@ -108,7 +108,7 @@ def error(testTarget, testTargetPredicted):
 
    return ((1.0 * count) / len(testTarget))
 
-def run(testPercentage, classifiers, iterations, filename, options):
+def run(data, numberOfUsers, testPercentage, classifiers, iterations, options):
    print >> sys.stderr, "Input file: " + fileName
    print >> sys.stderr, "Classifiers: " + classifiers
    print >> sys.stderr, "Options: " + options
@@ -116,8 +116,6 @@ def run(testPercentage, classifiers, iterations, filename, options):
 
    print >> sys.stderr, "Reading input file..."
 
-   data = readInput(fileName)
-   numberOfUsers = np.amax([map(float, column[1:]) for column in data][0:len(data)])
    errorRate = 0.0
    startTime = time.time()
    for i in range(0, iterations):
@@ -147,7 +145,7 @@ def run(testPercentage, classifiers, iterations, filename, options):
 
    endTime = time.time()
 
-   return numberOfUsers, errorRate, startTime, endTime
+   return errorRate, startTime, endTime
 
 def usage():
    print >> sys.stderr, "usage: classifier -i FILE [-p PERCENTAGE] -c CLASSIFIERS [-t ITERATIONS] [-o OPTIONS]"
@@ -214,7 +212,9 @@ def main(argv):
       usage()
       sys.exit(2)
 
-   numberOfUsers, errorRate, startTime, endTime = run(testPercentage, classifiers, iterations, filename, options)
+   data = readInput(fileName)
+   numberOfUsers = np.amax([map(float, column[1:]) for column in data][0:len(data)])
+   errorRate, startTime, endTime = run(data, numberOfUsers, testPercentage, classifiers, iterations, options)
 
    print >> sys.stderr, ""
    print >> sys.stderr, "Execution time: " + str(datetime.timedelta(seconds=(endTime - startTime)))
