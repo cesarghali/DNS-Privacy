@@ -73,9 +73,14 @@ class FeatureFormatter(object):
     def __init__(self, features):
         self.features = features # list of tuples
 
-    def toCSV(self, stream):
+    def toCSV(self, stream = None):
+        builder = ""
         for f in self.features:
-            stream.write(",".join(map(lambda x : str(x), f)) + "\n")
+            line = ",".join(map(lambda x : str(x), f)) + "\n"
+            builder = builder + line
+            if stream != None:
+                stream.write(line)
+        return builder
 
 class FeatureExtractor(object):
     ''' Base class for all feature extractors.
@@ -400,7 +405,7 @@ def join(featureSet):
             index += 1
         return joinedFeatures
 
-# TODO: not finished since we don't have data to even test it.
+# TODO: not finished since we don't have data to test it.
 class ResolutionChainLengthFeatureExtractor(FeatureExtractor):
     def __init__(self, inputQueries, outputQueries):
         FeatureExtractor.__init__(self, inputQueries, outputQueries)
@@ -408,61 +413,7 @@ class ResolutionChainLengthFeatureExtractor(FeatureExtractor):
     def extract(self, params = {}):
         pass
 
-if __name__ == "__main__":
-    desc = '''
-Parse a PCAP file and extract a set of features for classification.
-'''
-
-    parser = argparse.ArgumentParser(prog='feature_extractor', formatter_class=argparse.RawDescriptionHelpFormatter, description=desc)
-    parser.add_argument('-f', '--file', action="store", required=True, help="Relative path to PCAP file to parse", nargs="+")
-    parser.add_argument('--ql', default=False, action="store_true", help="Query length feature")
-    parser.add_argument('--qr', default=False, action="store_true", help="Query resolution time feature")
-    parser.add_argument('--tn', default=False, action="store_true", help="Query target name feature")
-    parser.add_argument('--qf', action="store", help="Query frequency with parameterized window")
-    parser.add_argument('--tf', action="store", help="Source target frequency with parameterized window")
-    parser.add_argument('--ta', action="store", help="Query target address feature")
-    parser.add_argument('--qd', action="store", help="Source query (single) component differences feature")
-    parser.add_argument('--qe', action="store", help="Source query entropy feature")
-
-    args = parser.parse_args()
-
-    if (len(sys.argv) == 1):
-        parser.print_help()
-        sys.exit(-1)
-
-    filenames = args.file
-    print >> sys.stderr, "$> Parsing...", filenames
-
-    dnsPackets = []
-    for filename in filenames:
-        parser = PacketParser(filename)
-        packets = parser.parseDNS(filename)
-        for packet in packets:
-            dnsPackets.append(packet)
-
-    # Initialize the extractors
-    extractors = []
-    for key in vars(args):
-        val = vars(args)[key]
-
-        if key == "ql" and val:
-            extractors.append(QueryLengthFeatureExtractor(dnsPackets))
-        elif key == "qr" and val:
-            extractors.append(QueryResolutionTimeFeatureExtractor(dnsPackets))
-        elif key == "qf" and val != None:
-            extractors.append(QueryFrequencyFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
-        elif key == "tf" and val != None:
-            extractors.append(TargetQueryFrequencyFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
-        elif key == "tn" and val:
-            extractors.append(TargetNameFeatureExtractor(dnsPackets))
-        elif key == "ta" and val:
-            extractors.append(TargetAddressFeatureExtractor(dnsPackets))
-        elif key == "qd" and val != None:
-            extractors.append(QueryComponentDifferenceDiversityFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
-        elif key == "qe" and val != None:
-            extractors.append(QueryEntropyDiversityFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
-
-    # Extract the features and, if not-empty, add them to the running set
+def extract(dnsPackets, extractors):
     featureSet = []
     sourceSet = {}
     for index, packet in enumerate(dnsPackets):
@@ -510,6 +461,65 @@ Parse a PCAP file and extract a set of features for classification.
 
     # Format the feature using CSV (maybe later add more formatting options)
     formatter = FeatureFormatter(featureSet)
-    formatter.toCSV(sys.stdout)
+    formatter.toCSV()
 
+def main(args):
+    filenames = args.file
+    print >> sys.stderr, "$> Parsing...", filenames
+
+    dnsPackets = []
+    for filename in filenames:
+        parser = PacketParser(filename)
+        packets = parser.parseDNS(filename)
+        for packet in packets:
+            dnsPackets.append(packet)
+
+    # Initialize the extractors
+    extractors = []
+    for key in vars(args):
+        val = vars(args)[key]
+
+        if key == "ql" and val:
+            extractors.append(QueryLengthFeatureExtractor(dnsPackets))
+        elif key == "qr" and val:
+            extractors.append(QueryResolutionTimeFeatureExtractor(dnsPackets))
+        elif key == "qf" and val != None:
+            extractors.append(QueryFrequencyFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
+        elif key == "tf" and val != None:
+            extractors.append(TargetQueryFrequencyFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
+        elif key == "tn" and val:
+            extractors.append(TargetNameFeatureExtractor(dnsPackets))
+        elif key == "ta" and val:
+            extractors.append(TargetAddressFeatureExtractor(dnsPackets))
+        elif key == "qd" and val != None:
+            extractors.append(QueryComponentDifferenceDiversityFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
+        elif key == "qe" and val != None:
+            extractors.append(QueryEntropyDiversityFeatureExtractor(dnsPackets, params = {"window" : float(val)}))
+
+    output = extract(dnsPackets, extractors)
+    print >> sys.stdout, output
     print >> sys.stderr, "$> Done. Parsed %d individual DNS packet(s)" % len(dnsPackets)
+
+if __name__ == "__main__":
+    desc = '''
+Parse a PCAP file and extract a set of features for classification.
+'''
+
+    parser = argparse.ArgumentParser(prog='feature_extractor', formatter_class=argparse.RawDescriptionHelpFormatter, description=desc)
+    parser.add_argument('-f', '--file', action="store", required=True, help="Relative path to PCAP file to parse", nargs="+")
+    parser.add_argument('--ql', default=False, action="store_true", help="Query length feature")
+    parser.add_argument('--qr', default=False, action="store_true", help="Query resolution time feature")
+    parser.add_argument('--tn', default=False, action="store_true", help="Query target name feature")
+    parser.add_argument('--qf', action="store", help="Query frequency with parameterized window")
+    parser.add_argument('--tf', action="store", help="Source target frequency with parameterized window")
+    parser.add_argument('--ta', action="store", help="Query target address feature")
+    parser.add_argument('--qd', action="store", help="Source query (single) component differences feature")
+    parser.add_argument('--qe', action="store", help="Source query entropy feature")
+
+    args = parser.parse_args()
+
+    if (len(sys.argv) == 1):
+        parser.print_help()
+        sys.exit(-1)
+
+    main(args)
