@@ -21,8 +21,21 @@ from pcap_parser import *
 # 10. Resolution chain length (number of recursive queries)
 # 11. Resolution chain (domains in the chain itself)
 
-def computeComponentDifferences(list1, list2):
-    return 0
+def computeComponentDifferences(s1, s2):
+     if len(s1) > len(s2):
+        s1,s2 = s2,s1
+    distances = range(len(s1) + 1)
+    for index2, elem2 in enumerate(s2):
+        elem2 = elem2.lower()
+        newDistances = [index2 + 1]
+        for index1, elem1 in enumerate(s1):
+            elem1 = elem1.lower()
+            if elem1 == elem2:
+                newDistances.append(distances[index1])
+            else:
+                newDistances.append(1 + min((distances[index1], distances[index1 + 1], newDistances[-1])))
+        distances = newDistances
+    return distances[-1]
 
 def computeQueryDifferences(queries):
     differences = 0
@@ -171,7 +184,9 @@ class QueryComponentDifferenceDiversityFeatureExtractor(FeatureExtractor):
             if packet.query != None:
                 src = packet.query.srcAddress
                 packetsSent, offset = self.getPacketsFromSourceInWindow(offset, src, window)
+
                 differences = computeQueryDifferences(packetsSent)
+
                 if src not in sources:
                     sources[src] = len(sources)
                 feature = (sources[src], differences)
@@ -233,7 +248,9 @@ class TargetQueryFrequencyFeatureExtractor(FeatureExtractor):
             if packet.query != None:
                 src = packet.query.srcAddress
                 packetsSent, offset = self.getPacketsFromSourceInWindow(offset, src, window)
+
                 frequency = computeQueryFrequency(packetsSent, window)
+
                 if src not in sources:
                     sources[src] = len(sources)
                 feature = (sources[src], frequency)
@@ -404,14 +421,6 @@ def join(featureSet):
 
             index += 1
         return joinedFeatures
-
-# TODO: not finished since we don't have data to test it.
-class ResolutionChainLengthFeatureExtractor(FeatureExtractor):
-    def __init__(self, inputQueries, outputQueries):
-        FeatureExtractor.__init__(self, inputQueries, outputQueries)
-
-    def extract(self, params = {}):
-        pass
 
 def extract(dnsPackets, extractors):
     featureSet = []
