@@ -1,0 +1,164 @@
+% THIS IS SIGPROC-SP.TEX - VERSION 3.1
+% WORKS WITH V3.2SP OF ACM_PROC_ARTICLE-SP.CLS
+% APRIL 2009
+
+\documentclass{llncs}
+
+\usepackage{todonotes,times}
+\usepackage{algorithm}
+\usepackage{url}
+\usepackage[noend]{algpseudocode}
+\usepackage{mdframed}
+\usepackage{amsmath}
+\usepackage{paralist}
+\usepackage{multirow,paralist}
+\usepackage{fancybox}
+
+\newenvironment{fminipage}%
+{\begin{Sbox}\begin{minipage}}%
+{\end{minipage}\end{Sbox}\fbox{\TheSbox}}
+
+\makeatletter
+%\renewcommand{\ALG@beginalgorithmic}{\scriptsize}
+\makeatother
+
+\newtheorem{defn}{\textbf{Definition}}
+\newtheorem{thm}{\textbf{Theorem}}
+\newtheorem{cor}{\textbf{Corollary}}
+%\newtheorem{lemma}{\textbf{Lemma}}
+
+\begin{document}
+
+\mainmatter              % start of the contributions
+\title{An Analysis of Privacy Leaking Side Channels at DNS Stub Servers}
+\titlerunning{TODO}
+
+\author{Cesar Ghali, Gene Tsudik, Christopher A. Wood}
+\authorrunning{Wood} % abbreviated author list (for running head)
+%%%% list of authors for the TOC (use if author list has to be modified)
+\tocauthor{Cesar Ghali, Gene Tsudik, Christopher A. Wood}
+
+\institute{University of California Irvine, Irvine CA, USA\\
+\email{\{cghali,gene.tsudik,woodc1@\}uci.edu}}
+
+% typeset the title of the contribution
+\maketitle
+
+\begin{abstract}
+TODO
+\end{abstract}
+
+\section{Introduction}
+TODO
+
+\section{Preliminaries}
+TODO
+
+
+If an adversary cannot learn any information from the name of an interest (and content object)
+beyond the destination, then it must be true that
+\begin{align*}
+\Pr[\mathsf{AddressPrefix}_{\mathcal{A}}(1^\lambda) = 1]\leq \frac{1}{2} + \epsilon(\lambda)
+\end{align*}
+
+\section{Overview}
+TODO
+
+\begin{algorithm}[t]
+  \caption{Random Onion Routing}
+  \begin{algorithmic}[1]
+    % \Require{INPUT}
+
+\Function{{\sf WrapName}}{$n = [n_1,\dots,n_l]$, $k = [k_1,\dots,k_l]$}
+    \State $\bar{n} := []$
+    \For{$i = 1 \to l$}
+    	\State $\mathsf{prefix} := H(n[1:i]) \oplus k_i$
+    	\State $\mathsf{Append}(\bar{n}, \mathsf{prefix})$
+    \EndFor
+    \State \textbf{return} $\bar{n}$
+\EndFunction
+
+\Function{{\sf EncodeName}}{$n = [n_1,\dots,n_l]$, $k = [k_1,\dots,k_l]$, $r = [r_1,\dots,r_l]$}
+    \State $\bar{n} := []$
+    \For{$i = 1 \to l$}
+    	\State $\mathsf{prefix} := n[1:i] \oplus k_i \oplus r_i$
+    	\State $\mathsf{Append}(\bar{n}, \mathsf{prefix})$
+    \EndFor
+    \State \textbf{return} $\bar{n}$
+\EndFunction
+
+\Function{{\sf PropogateName}}{$R_{up}$, $IF_{up}$, $n$, $k_R = [k_1,\dots,k_l]$, $r_R = [r_1,\dots,r_l]$, $s_R = [s_1,\dots,s_l]$} % s is the secret mask used for wrapping
+	\State $\mathbf{R}_{out} = \mathsf{GetOutputInterfaces(P, R_{up})}$ % all output interfaces
+	\State $\hat{n} := \mathsf{EncodeName}(n, k_R, r_R)$
+	\State Insert each prefix of $\hat{n}$ into the local FIB with the tuple $(n, IF_{up})$
+	\State $\bar{n} := \mathsf{WrapName}(n, s_R)$
+    \For{$i = 1 \to |\mathbf{R}|$}
+      \State $\mathsf{PropogateName}(\mathbf{R}[i], \bar{n})$
+    \EndFor
+\EndFunction
+
+\Function{{\sf Advertise}}{$P$, $n$, $s_P = [s_1,\dots,s_l]$}
+    \State $\bar{n} := \mathsf{WrapName}(n, s_P)$
+    \State $\mathbf{R}_{out} = \mathsf{GetOutputInterfaces(P, \emptyset)}$
+    \For{$i = 1 \to |\mathbf{R}|$}
+    	\State $\mathsf{PropogateName}(\mathbf{R}[i], \bar{n})$
+    \EndFor
+\EndFunction
+
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[t]
+  \caption{Random Onion Forwarding}
+  \begin{algorithmic}[1]
+    % \Require{INPUT}
+
+\Function{{\sf DecodeName}}{$n = [n_1,\dots,n_l]$, $k = [k_1,\dots,k_l]$, $r = [r_1,\dots,r_l]$}
+    \State $\bar{n} := []$
+    \For{$i = 1 \to l$}
+    	\State $\mathsf{prefix} := n[1:i] \oplus k_i \oplus r_i$
+    	\State $\mathsf{Append}(\bar{n}, \mathsf{prefix})$
+    \EndFor
+    \State \textbf{return} $\bar{n}$
+\EndFunction
+
+\Function{{\sf UnwrapName}}{$n = [n_1,\dots,n_l]$, $r = [r_1,\dots,r_l]$}
+    \State $\bar{n} := []$
+    \For{$i = 1 \to l$}
+    	\State $\mathsf{prefix} := n[1:i] \oplus r_i$
+    	\State $\mathsf{Append}(\bar{n}, \mathsf{prefix})$
+    \EndFor
+    \State \textbf{return} $\bar{n}$
+\EndFunction
+
+\Function{{\sf ForwarderAccept}}{$n = [n_1,\dots,n_l]$, $k_R = [k_1,\dots,k_l]$, $r = [r_1,\dots,r_l]$, $s_R = [s_1,\dots,s_l]$}
+	\State $\bar{n} := \mathsf{UnwrapName}(n, s_R)$ %%% we can remove its mask, but then n will still be masked by all other upstream strings (S_2,\dots,S_l)
+	\If {$\bar{n}$ in FIB}
+		\State $(n, IF_{up}) := \mathsf{FIB}.\mathsf{Lookup}(\bar{n})$
+		\State $\mathsf{ForwarderNameProcess}(IF_{up}, n, k_R)$
+	\Else
+		\State Drop interest
+	\EndIf
+\EndFunction
+
+\Function{{\sf ForwarderNameProcess}}{$IF_{up}$, $n = [n_1,\dots,n_l]$, $k_R = [k_1,\dots,k_l]$}
+    \State $k_{up}, r_{up} := \mathsf{GetUpstreamParams}(R_{up})$
+    \State $\bar{n} := \mathsf{EncodeName}(n, k_{up}, r_{up})$
+    \State $\hat{r} := []$ % initialize r with random masks for each of the l components
+    \For {$i := 1 \to l$}
+    	\State $rand \gets \{0,1\}^{\lambda}$
+    	\State $\mathsf{Append}(\hat{r}, rand)$
+    \EndFor
+    \State $\hat{n} := \mathsf{DecodeName}(\bar{n}, k_{up}, \hat{r})$ % new plaintext name, to use with random IV
+    \State Send $(\hat{n}, \hat{r})$ to $IF_{up}$
+\EndFunction
+
+\end{algorithmic}
+\end{algorithm}
+
+\medskip
+\small
+\bibliographystyle{abbrv}
+\bibliography{ref}
+
+\end{document}
