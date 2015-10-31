@@ -22,7 +22,7 @@ from pcap_parser import *
 # 11. Resolution chain (domains in the chain itself)
 
 def computeComponentDifferences(s1, s2):
-     if len(s1) > len(s2):
+    if len(s1) > len(s2):
         s1,s2 = s2,s1
     distances = range(len(s1) + 1)
     for index2, elem2 in enumerate(s2):
@@ -87,13 +87,14 @@ class FeatureFormatter(object):
         self.features = features # list of tuples
 
     def toCSV(self, stream = None):
-        builder = ""
+        lines = []
         for f in self.features:
-            line = ",".join(map(lambda x : str(x), f)) + "\n"
-            builder = builder + line
-            if stream != None:
-                stream.write(line)
-        return builder
+            line = ",".join(map(lambda x : str(x), f))
+            if len(line) > 1:
+                lines.append(line)
+                if stream != None:
+                    stream.write(line)
+        return "\n".join(lines)
 
 class FeatureExtractor(object):
     ''' Base class for all feature extractors.
@@ -471,6 +472,8 @@ def extract(dnsPackets, extractors):
     # Format the feature using CSV (maybe later add more formatting options)
     formatter = FeatureFormatter(featureSet)
     formatter.toCSV()
+
+    return featureSet
 
 def main(args):
     filenames = args.file

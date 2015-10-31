@@ -10,6 +10,7 @@ class ResourceRecord(object):
         self.rr = rr
         self.srcAddress = socket.inet_ntoa(ip.src)
         self.dstAddress = socket.inet_ntoa(ip.dst)
+        self.targetAddress = None
         self._unpack()
 
     def _unpack(self):
@@ -35,6 +36,9 @@ class Query(object):
         self.srcAddress = socket.inet_ntoa(ip.src)
         self.dstAddress = socket.inet_ntoa(ip.dst)
         self._unpack()
+
+    def split(self, string):
+        return str(self.name).split(string)
 
     def _unpack(self):
         self.name = self.query.name

@@ -15,8 +15,8 @@ def build_extractors(dnsPackets, windows = [0.5, 1, 5, 10]):
 
     extractors.append(QueryLengthFeatureExtractor(dnsPackets))
     extractors.append(QueryResolutionTimeFeatureExtractor(dnsPackets))
-    extractors.append(TargetNameFeatureExtractor(dnsPackets))
-    extractors.append(TargetAddressFeatureExtractor(dnsPackets))
+    # extractors.append(TargetNameFeatureExtractor(dnsPackets))
+    # extractors.append(TargetAddressFeatureExtractor(dnsPackets))
 
     # Initialize the dynamic ones with a bunch of different window values
     for window in windows:
@@ -27,10 +27,12 @@ def build_extractors(dnsPackets, windows = [0.5, 1, 5, 10]):
 
     return extractors
 
-def run_classifiers(data):
+def run_classifiers(identifier, data):
     testPercentage = 0.1
     iterations = 1000
     options = ""
+
+    print data
 
     numberOfUsers = np.amax([map(float, column[1:]) for column in data][0:len(data)])
     classifiers = get_classifiers().split(",")
@@ -44,7 +46,7 @@ def run_classifiers(data):
             print >> sys.stderr, "Execution time: " + str(datetime.timedelta(seconds=(endTime - startTime)))
             print >> sys.stderr, "Error rate: " + str(errorRate / iterations)
             print >> sys.stderr, "Number of users: " + str(numberOfUsers)
-            print >> sys.stdout, fileName + "\t" +\
+            print >> sys.stdout, identifier + "\t" +\
                 classifier_subset + "\t" +\
                 options + "\t" +\
                 str(datetime.timedelta(seconds=(endTime - startTime))) + "\t" +\
@@ -64,13 +66,16 @@ def main(args):
     for num_of_extractors in range(1, len(extractors) + 1):
         for subset in itertools.combinations(extractors, num_of_extractors):
             features = extract(dnsPackets, subset)
-            run_classifiers(features)
+            if features != None:
+                run_classifiers("rawr", features)
+            else:
+                print "Null features %s" % (str(subset))
 
 if __name__ == "__main__":
     desc = '''
 Parse a PCAP file and extract a set of features for classification.
 '''
-    parser = argparse.ArgumentParser(prog='feature_extractor', formatter_class=argparse.RawDescriptionHelpFormatter, description=desc)
+    parser = argparse.ArgumentParser(prog='runner', formatter_class=argparse.RawDescriptionHelpFormatter, description=desc)
     parser.add_argument('-f', '--file', action="store", required=True, help="Relative path to PCAP file(s) to parse", nargs="+")
 
     args = parser.parse_args()

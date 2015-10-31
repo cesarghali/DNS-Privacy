@@ -111,7 +111,7 @@ def error(testTarget, testTargetPredicted):
    return ((1.0 * count) / len(testTarget))
 
 def run(data, numberOfUsers, testPercentage, classifiers, iterations, options):
-   print >> sys.stderr, "Input file: " + fileName
+   # print >> sys.stderr, "Input file: " + fileName
    print >> sys.stderr, "Classifiers: " + classifiers
    print >> sys.stderr, "Options: " + options
    print >> sys.stderr, ""
