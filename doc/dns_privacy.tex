@@ -49,10 +49,33 @@ TODO
 \end{abstract}
 
 \section{Introduction}
-TODO
+The need for a private Domain Name System (DNS) has become increasingly important
+in recent years. There are currently several different proposals to address this
+growing problem, including DNS-over-TLS \cite{dnstls} and DNSCurve \cite{dnscurve}.
+The former approach enables clients to create ephemeral sessions with either
+their resolver or authoritative (stub) servers in which queries can be issued.
+The latter uses per-query encryption to protect queries between clients and servers.
+Encryption is core mechanism used to enable client privacy in both of these 
+solutions. However, in a recent study, Shulman showed that the privacy properties
+of these solutions (based on encryption alone) against eavesdropping 
+adversaries \cite{shulman2014pretty}. This assessment showed that information leaked
+in DNS side channels, e.g., query timing, frequency, and resolution ``chains,'' 
+may reveal the target domain for a given DNS query. Moreover, by observing the
+trust properties of DNS servers and their responses, an adversary may also 
+learn the specific record within a domain that was requested. 
 
-\section{Preliminaries}
-TODO
+In this work we study a complementary problem. Namely, how can DNS queries, 
+encrypted or not, be used to identify their clients? Put another way, do the 
+contents of queries recursively issued by resolvers reveal information about
+the resolver's clients? This is an important problem because if answered
+positively, then stub servers can learn information about DNS clients even
+if encryption is used to protect the actual contents of queries in transit. 
+
+The rest of this report is organized as follows. In Section \ref{sec:model}
+we formalize the adversarial model and 
+
+\section{System Model}\label{sec:model}
+To assess the 
 
 
 If an adversary cannot learn any information from the name of an interest (and content object)
