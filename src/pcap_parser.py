@@ -91,11 +91,11 @@ class DNSPacket(object):
             return False
 
 class PacketParser(object):
-    def __init__(self, filename):
+    def __init__(self):
         self.filename = filename
 
-    def parseDNS(self, filename):
-        pcapFile = dpkt.pcap.Reader(open(filename,'r'))
+    def parseDNS(self, handle):
+        pcapFile = dpkt.pcap.Reader(handle)
 
         dnsPackets = []
         index = 0
