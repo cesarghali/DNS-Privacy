@@ -15,3 +15,8 @@ for dirpath, dnames, fnames in os.walk(sys.argv[1]):
                 for packet in packets:
                     if packet.query != None:
                         domains.add(packet.query.name)
+
+print len(domains)
+with open(sys.argv[2], "w") as fh:
+    for domain in domains:
+        fh.write(str(domain) + "\n")
