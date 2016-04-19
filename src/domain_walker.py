@@ -5,6 +5,7 @@ import gzip
 from pcap_parser import *
 
 domains = set()
+num = 0
 
 for dirpath, dnames, fnames in os.walk(sys.argv[1]):
     for f in fnames:
@@ -15,6 +16,9 @@ for dirpath, dnames, fnames in os.walk(sys.argv[1]):
                 packets = parser.parseDNS(fh)
                 for packet in packets:
                     if packet.query != None:
+                        if packet.query.name not in domains:
+                            print "%d,%s" % (num, packet.query.name)
+                            num += 1
                         domains.add(packet.query.name)
 
 print len(domains)
