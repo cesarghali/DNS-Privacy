@@ -9,7 +9,8 @@ domains = set()
 for dirpath, dnames, fnames in os.walk(sys.argv[1]):
     for f in fnames:
         if f.endswith(".pcap.gz"):
-            with gzip.open(f, 'rb') as fh:
+            print >> sys.stderr, "Opening %s" % (f)
+            with gzip.open(os.path.join(dirpath, f), 'rb') as fh:
                 parser = PacketParser()
                 packets = parser.parseDNS(fh)
                 for packet in packets:

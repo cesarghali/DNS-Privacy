@@ -92,7 +92,8 @@ class DNSPacket(object):
 
 class PacketParser(object):
     def __init__(self):
-        self.filename = filename
+        pass
+        #self.filename = filename
 
     def parseDNS(self, handle):
         pcapFile = dpkt.pcap.Reader(handle)
@@ -100,10 +101,13 @@ class PacketParser(object):
         dnsPackets = []
         index = 0
         for ts, pkt in pcapFile:
-            eth = dpkt.ethernet.Ethernet(pkt)
-            packet = DNSPacket(index, eth, ts)
-            if packet.isDNS:
-                dnsPackets.append(packet)
+            try:
+                eth = dpkt.ethernet.Ethernet(pkt)
+                packet = DNSPacket(index, eth, ts)
+                if packet.isDNS:
+                    dnsPackets.append(packet)
+            except: 
+                pass
             index = index + 1
 
         return dnsPackets
