@@ -1,0 +1,1 @@
+tshark -r 20150415.12:00:00.pcap.gz -T fields -e ip.src -e dns.qry.name -Y "dns.flags.response eq 0" | awk '$2>0 {print $2}'
