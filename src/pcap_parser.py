@@ -19,13 +19,10 @@ class ResourceRecord(object):
 
         # Parse the RR type (see https://en.wikipedia.org/wiki/List_of_DNS_record_types)
         if self.rr.type == 5:
-            # print "CNAME request", rr.name, "\tresponse", rr.cname
             self.cname = self.rr.cname
         elif self.rr.type == 1:
-            # print "Type 1 Request", rr.name, "\tresponse", socket.inet_ntoa(rr.rdata)
             self.targetAddress = socket.inet_ntoa(self.rr.rdata)
         elif self.rr.type == 12:
-            # print "PTR request", rr.name, "\tresponse", rr.ptrname
             self.ptrname = self.rr.ptrname
 
 class Query(object):
@@ -56,11 +53,25 @@ class DNSPacket(object):
         self.isDNS = self.unpack()
 
     def unpack(self, debug = False):
-        if self.ethernetPacket.type != dpkt.ethernet.ETH_TYPE_IP:
-            return False # DNS runs on top of IP
+        validPacket = False
+        ipv4 = True
+
+        print dpkt.ethernet.ETH_TYPE_IP
+        print dpkt.ethernet.ETH_TYPE_IP6
+        print self.ethernetPacket.type
+        print repr(self.ethernetPacket)
+        if self.ethernetPacket.type == dpkt.ethernet.ETH_TYPE_IP:
+            validPacket = True
+        if self.ethernetPacket.type == dpkt.ethernet.ETH_TYPE_IP6:
+            validPacket = True
+            ipv4 = False
+
+        if not validPacket:
+            return False
 
         self.ip = self.ethernetPacket.data
-        if self.ip.p == dpkt.ip.IP_PROTO_UDP: # DNS runs over UDP currently
+        if (ipv4 and self.ip.p == dpkt.ip.IP_PROTO_UDP) or (not ipv4 and self.ip.nxt == dpkt.ip.IP_PROTO_UDP):
+            print "ok"
             self.udp = self.ip.data
 
             tb = None
@@ -93,21 +104,27 @@ class DNSPacket(object):
 class PacketParser(object):
     def __init__(self):
         pass
-        #self.filename = filename
 
     def parseDNS(self, handle):
         pcapFile = dpkt.pcap.Reader(handle)
 
         dnsPackets = []
         index = 0
+        # gzip = dpkt.gzip.Gzip()
         for ts, pkt in pcapFile:
             try:
+                # gzip = dpkt.gzip.Gzip(pkt)
+                # raw_buffer = gzip.unpack(pkt)
                 eth = dpkt.ethernet.Ethernet(pkt)
+                # gzip = dpkt.gzip.Gzip()
+                # gzip.unpack(eth)
+
+                print eth
                 packet = DNSPacket(index, eth, ts)
                 if packet.isDNS:
                     dnsPackets.append(packet)
-            except: 
-                pass
+            except Exception as e:
+                raise
             index = index + 1
 
         return dnsPackets
